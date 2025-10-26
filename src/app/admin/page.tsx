@@ -170,6 +170,7 @@ function WorksAdmin() {
   const [formError, setFormError] = useState("");
   const [works, setWorks] = useState<Work[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [newCategory, setNewCategory] = useState("");
 
   // Recadrage
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -207,49 +208,63 @@ function WorksAdmin() {
   };
 
   const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError("");
-    setStatus("");
+  e.preventDefault();
+  setFormError("");
+  setStatus("");
 
-    // validations minimales (non vides)
-    if (!form.title || !form.alt || !form.category || !file) {
-      setFormError("⚠️ Titre, Alt, Catégorie et Image sont requis.");
-      return;
+  // validations minimales
+  if (!form.title || !form.alt || !file) {
+    setFormError("⚠️ Titre, Alt et Image sont requis.");
+    return;
+  }
+
+  // 🧠 Si l'utilisateur a choisi "Nouvelle catégorie", on prend la saisie newCategory
+  const categoryToSave =
+    form.category === "__new__" && newCategory.trim()
+      ? newCategory.trim()
+      : form.category;
+
+  if (!categoryToSave) {
+    setFormError("⚠️ La catégorie est requise.");
+    return;
+  }
+
+  setStatus("⏳ Traitement…");
+
+  try {
+    // Recadrage côté client → webp
+    let uploadFile = file;
+    if (preview && croppedPixels) {
+      const blob = await getCroppedImg(preview, croppedPixels);
+      uploadFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".webp"), {
+        type: "image/webp",
+      });
     }
 
-    setStatus("⏳ Traitement…");
-    try {
-      // Recadrage côté client → webp
-      let uploadFile = file;
-      if (preview && croppedPixels) {
-        const blob = await getCroppedImg(preview, croppedPixels);
-        uploadFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".webp"), {
-          type: "image/webp",
-        });
-      }
+    const fd = new FormData();
+    fd.append("file", uploadFile);
+    fd.append("title", form.title);
+    fd.append("location", form.location);
+    fd.append("category", categoryToSave);
+    fd.append("prices", form.prices);
+    fd.append("alt", form.alt);
+    fd.append("story", form.story);
 
-      const fd = new FormData();
-      fd.append("file", uploadFile);
-      fd.append("title", form.title);
-      fd.append("location", form.location);
-      fd.append("category", form.category);
-      fd.append("prices", form.prices);
-      fd.append("alt", form.alt);
-      fd.append("story", form.story);
+    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    if (!res.ok) throw new Error("Upload KO");
 
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
-      if (!res.ok) throw new Error("Upload KO");
-
-      setStatus("✅ Ajouté !");
-      setForm({ title: "", location: "", category: "", prices: "", alt: "", story: "" });
-      setFile(null);
-      setPreview(null);
-      setZoom(1);
-      fetchWorks();
-    } catch {
-      setStatus("❌ Erreur d’envoi.");
-    }
-  };
+    setStatus("✅ Ajouté !");
+    setForm({ title: "", location: "", category: "", prices: "", alt: "", story: "" });
+    setFile(null);
+    setPreview(null);
+    setZoom(1);
+    setNewCategory(""); // on nettoie le champ
+    fetchWorks();
+  } catch (err) {
+    console.error(err);
+    setStatus("❌ Erreur d’envoi.");
+  }
+};
 
   const remove = async (id: string) => {
     if (!confirm("Supprimer cette œuvre ?")) return;
@@ -290,34 +305,44 @@ function WorksAdmin() {
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4 items-center">
-            <select
-              className="p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600"
-              value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
-            >
-              <option value="">— Choisir une catégorie —</option>
-              {categories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-              <option value="__new__">➕ Nouvelle catégorie…</option>
-            </select>
-            {form.category === "__new__" && (
-              <input
-                className="p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600"
-                placeholder="Nom de la nouvelle catégorie"
-                onChange={(e) => setForm({ ...form, category: e.target.value })}
-              />
-              
-            )}
-              <input
-            className="p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600"
-            placeholder="Texte alternatif (SEO) *"
-            value={form.alt}
-            onChange={(e) => setForm({ ...form, alt: e.target.value })}
-          />
-          </div>
+  <select
+    className="p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600"
+    value={form.category}
+    onChange={(e) => {
+      const value = e.target.value;
+      if (value === "__new__") {
+        setForm({ ...form, category: "__new__" });
+      } else {
+        setForm({ ...form, category: value });
+        setNewCategory(""); // reset
+      }
+    }}
+  >
+    <option value="">— Choisir une catégorie —</option>
+    {categories.map((c) => (
+      <option key={c} value={c}>
+        {c}
+      </option>
+    ))}
+    <option value="__new__">➕ Nouvelle catégorie…</option>
+  </select>
+
+  {form.category === "__new__" && (
+    <input
+      className="p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600"
+      placeholder="Nom de la nouvelle catégorie"
+      value={newCategory}
+      onChange={(e) => setNewCategory(e.target.value)}
+    />
+  )}
+
+  <input
+    className="p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600"
+    placeholder="Texte alternatif (SEO) *"
+    value={form.alt}
+    onChange={(e) => setForm({ ...form, alt: e.target.value })}
+  />
+</div>
 
         
 
