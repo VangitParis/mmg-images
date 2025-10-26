@@ -1,12 +1,12 @@
 import { put } from "@vercel/blob";
 import { kv } from "@/lib/kv";
-import sharp from "sharp";
 import { NextResponse } from "next/server";
 
-export const runtime = "edge";
+export const runtime = "nodejs"; // ✅ nécessaire pour Sharp
 
 export async function POST(req: Request) {
   try {
+    const sharp = (await import("sharp")).default; // ✅ import dynamique pour éviter les erreurs Edge
     const formData = await req.formData();
     const file = formData.get("file") as File;
     if (!file) return NextResponse.json({ success: false, error: "Aucun fichier" });
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     const alt = formData.get("alt") as string;
     const story = formData.get("story") as string;
 
-    // Watermark
+    // 🖋️ watermark SVG
     const buffer = Buffer.from(await file.arrayBuffer());
     const watermark = Buffer.from(`
       <svg width="800" height="200">
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       .webp({ quality: 80 })
       .toBuffer();
 
-    // Upload vers Vercel Blob
+    // 📤 Upload vers Vercel Blob
     const fileName = `${Date.now()}.webp`;
     const blob = await put(fileName, processedBuffer, { access: "public" });
 
@@ -55,6 +55,7 @@ export async function POST(req: Request) {
       createdAt: new Date().toISOString(),
     };
 
+    // 💾 Sauvegarde dans Upstash KV
     await kv.lpush("works", JSON.stringify(newWork));
 
     return NextResponse.json({ success: true, work: newWork });
