@@ -1,13 +1,16 @@
+import { put } from "@vercel/blob";
+import { kv } from "@vercel/kv";
 import sharp from "sharp";
-import path from "path";
-import fs from "fs";
 import { NextResponse } from "next/server";
+
+export const runtime = "nodejs";
+
 
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File;
-    const buffer = Buffer.from(await file.arrayBuffer());
+    if (!file) return NextResponse.json({ success: false, error: "Aucun fichier" });
 
     const title = formData.get("title") as string;
     const location = formData.get("location") as string;
@@ -16,13 +19,8 @@ export async function POST(req: Request) {
     const alt = formData.get("alt") as string;
     const story = formData.get("story") as string;
 
-    const uploadsDir = path.join(process.cwd(), "public/uploads");
-    if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
-    const fileName = `${Date.now()}.webp`;
-    const filePath = path.join(uploadsDir, fileName);
-
-    // 🖋️ watermark
+    // 🖋️ Convertir et ajouter le watermark
+    const buffer = Buffer.from(await file.arrayBuffer());
     const watermark = Buffer.from(`
       <svg width="800" height="200">
         <text x="50%" y="50%" text-anchor="middle" fill="white" font-size="48" font-family="cursive" opacity="0.35" transform="rotate(-10, 400, 100)">
@@ -31,17 +29,22 @@ export async function POST(req: Request) {
       </svg>
     `);
 
-    await sharp(buffer)
+    const processedBuffer = await sharp(buffer)
       .resize(1600, null, { fit: "inside" })
       .composite([{ input: watermark, gravity: "center" }])
       .webp({ quality: 80 })
-      .toFile(filePath);
+      .toBuffer();
 
+    // 📤 Upload vers Vercel Blob
+    const fileName = `${Date.now()}.webp`;
+    const blob = await put(fileName, processedBuffer, { access: "public" });
+
+    // 🆕 Construire l’objet de l’œuvre
     const newWork = {
       id: `${Date.now()}`,
       title,
       location,
-      src: `/uploads/${fileName}`,
+      src: blob.url,
       category,
       prices: prices
         ? prices.split("\n").map((l) => {
@@ -51,15 +54,13 @@ export async function POST(req: Request) {
         : [],
       alt,
       story,
+      createdAt: new Date().toISOString(),
     };
 
-    const worksPath = path.join(process.cwd(), "src/lib/works.json");
-    const data = fs.existsSync(worksPath)
-      ? JSON.parse(fs.readFileSync(worksPath, "utf-8"))
-      : [];
-    data.push(newWork);
-    fs.writeFileSync(worksPath, JSON.stringify(data, null, 2), "utf-8");
+    // 💾 Sauvegarder dans la base Redis (Upstash)
+    await kv.lpush("works", JSON.stringify(newWork));
 
+    // ✅ Retour succès
     return NextResponse.json({ success: true, work: newWork });
   } catch (err: any) {
     console.error("Erreur upload:", err);

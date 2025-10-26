@@ -1,33 +1,45 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
+import { kv } from "@/lib/kv";
+
+export const runtime = "nodejs";
 
 export async function DELETE(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get("id");
-    if (!id) return NextResponse.json({ error: "id manquant" }, { status: 400 });
-
-    const worksPath = path.join(process.cwd(), "src/lib/works.json");
-    if (!fs.existsSync(worksPath)) fs.writeFileSync(worksPath, "[]", "utf-8");
-    const data = JSON.parse(fs.readFileSync(worksPath, "utf-8"));
-
-    const idx = data.findIndex((w: any) => String(w.id) === String(id));
-    if (idx === -1) return NextResponse.json({ error: "œuvre introuvable" }, { status: 404 });
-
-    // supprime fichier associé
-    const toDelete = data[idx];
-    if (toDelete?.src?.startsWith("/uploads/")) {
-      const full = path.join(process.cwd(), "public", toDelete.src);
-      if (fs.existsSync(full)) fs.unlinkSync(full);
+    const url = new URL(req.url);
+    const id = url.searchParams.get("id");
+    if (!id) {
+      return NextResponse.json({ success: false, error: "id manquant" }, { status: 400 });
     }
 
-    data.splice(idx, 1);
-    fs.writeFileSync(worksPath, JSON.stringify(data, null, 2), "utf-8");
+    // Lire toute la liste
+    const items = await kv.lrange("works", 0, -1);
+
+    // Normaliser en objets JS (gère string JSON ou objets déjà sérialisés)
+    const parsed = items.map((it: any) =>
+      typeof it === "string" ? JSON.parse(it) : it
+    );
+
+    // Vérifier présence
+    const exists = parsed.find((p: any) => String(p.id) === String(id));
+    if (!exists) {
+      return NextResponse.json({ success: false, error: "Oeuvre introuvable" }, { status: 404 });
+    }
+
+    // Filtrer la liste
+    const remaining = parsed.filter((p: any) => String(p.id) !== String(id));
+
+    // Réécrire la liste proprement (supprime la clé puis push les restants)
+    await kv.del("works");
+    if (remaining.length) {
+      // On push en ordre (rpush pour garder l'ordre original)
+      for (const item of remaining) {
+        await kv.rpush("works", JSON.stringify(item));
+      }
+    }
 
     return NextResponse.json({ success: true });
-  } catch (err:any) {
-    console.error("DELETE /api/delete:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: any) {
+    console.error("Erreur suppression work:", err);
+    return NextResponse.json({ success: false, error: err?.message || String(err) }, { status: 500 });
   }
 }
