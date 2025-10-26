@@ -12,7 +12,6 @@ const SIG_ACCENT_BG = "bg-amber-500 hover:bg-amber-400";
 const SIG_ACCENT_TEXT = "text-amber-300";
 const SIG_ACCENT_BADGE = "border-amber-500 text-amber-300";
 
-
 /* ─────────────────────────────
    Modèles de prix par défaut
    ───────────────────────────── */
@@ -49,15 +48,33 @@ export default function AdminPage() {
   const [isAuth, setIsAuth] = useState(false);
   const [authError, setAuthError] = useState("");
   const [tab, setTab] = useState<Tab>("works");
-  
 
-  const handleLogin = () => {
-    if (password === "mmgimages2025") {
-      setIsAuth(true);
-      setAuthError("");
-    } else setAuthError("❌ Mot de passe incorrect.");
+  // 🔐 Vérification sécurisée via API Route
+  const handleLogin = async () => {
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setIsAuth(true);
+        setAuthError("");
+      } else {
+        setAuthError(data.message || "❌ Mot de passe incorrect.");
+      }
+    } catch (err) {
+      console.error(err);
+      setAuthError("⚠️ Erreur serveur, réessaie plus tard.");
+    }
   };
 
+  /* ─────────────────────────────
+     Écran de connexion admin
+     ───────────────────────────── */
   if (!isAuth) {
     return (
       <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col items-center justify-center px-4">
@@ -81,6 +98,9 @@ export default function AdminPage() {
     );
   }
 
+  /* ─────────────────────────────
+     Interface principale admin
+     ───────────────────────────── */
   return (
     <main className="min-h-screen bg-neutral-950 text-neutral-100 px-4 py-8 sm:p-8">
       {/* Header */}
@@ -108,6 +128,9 @@ export default function AdminPage() {
   );
 }
 
+/* ─────────────────────────────
+   Bouton d’onglet stylisé
+   ───────────────────────────── */
 function TabButton({
   active,
   onClick,
@@ -127,6 +150,7 @@ function TabButton({
     </button>
   );
 }
+
 
 /* ╭────────────────────────────────────────────────────────╮
    │                       Œ U V R E S                      │
@@ -237,7 +261,7 @@ function WorksAdmin() {
 
   return (
     <>
-      <section className="mb-12">
+      <section className="mb-12 flex flex-col gap-6 items-center">
         <h2 className="text-xl font-light mb-2">Ajouter une œuvre</h2>
         <p className={`text-sm mb-6 ${SIG_ACCENT_TEXT}`}>
           WebP optimisé & watermark appliqué côté serveur.
@@ -265,7 +289,7 @@ function WorksAdmin() {
             />
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-2 gap-4 items-center">
             <select
               className="p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600"
               value={form.category}
@@ -285,18 +309,20 @@ function WorksAdmin() {
                 placeholder="Nom de la nouvelle catégorie"
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
               />
+              
             )}
-          </div>
-
-          <input
+              <input
             className="p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600"
             placeholder="Texte alternatif (SEO) *"
             value={form.alt}
             onChange={(e) => setForm({ ...form, alt: e.target.value })}
           />
+          </div>
+
+        
 
           <textarea
-            className="p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600 h-24"
+            className="w-full p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600 h-24"
             placeholder="Petite histoire (facultatif)"
             value={form.story}
             onChange={(e) => setForm({ ...form, story: e.target.value })}
@@ -331,18 +357,18 @@ function WorksAdmin() {
           )}
 
           <textarea
-            className="p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600 h-28"
-            placeholder={`Prix (un par ligne)
-Ex:
-Tirage A2 - 35000
-Téléchargement HD - 12000`}
+            className="w-full p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600 h-28"
+            placeholder={`Ajoute les formats et leurs prix (un par ligne)
+Exemples :
+Tirage Fine Art A2 — 350 €
+Téléchargement HD — 120 €`}
             value={form.prices}
             onChange={(e) => setForm({ ...form, prices: e.target.value })}
           />
 
           <button
             type="submit"
-            className={`${SIG_ACCENT_BG} text-black px-5 py-2 rounded font-medium transition-colors`}
+            className={`${SIG_ACCENT_BG} text-black px-5 py-2 rounded font-medium transition-colors items-center justify-center flex mx-auto   `}
           >
             Ajouter l’œuvre
           </button>
@@ -532,8 +558,8 @@ function PagesAdmin() {
           <input type="file" accept="image/*" className="hidden" onChange={onFile} />
         </label>
 <input
-  className="p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600"
-  placeholder="Texte alternatif (SEO)"
+  className="w-full p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600"
+  placeholder="Texte alternatif (SEO) = mots clés"
   value={form.alt || ""}
   onChange={(e) => setForm({ ...form, alt: e.target.value })}
 />
@@ -553,14 +579,14 @@ function PagesAdmin() {
 
 
         <input
-          className="p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600"
+          className="w-full p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600"
           placeholder="Ou colle ici une URL d’image"
           value={form.image}
           onChange={(e) => setForm({ ...form, image: e.target.value })}
         />
 
         <textarea
-          className="p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600 h-40"
+          className="w-full p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600 h-40"
           placeholder="Contenu (texte ou Markdown)"
           value={form.content}
           onChange={(e) => setForm({ ...form, content: e.target.value })}
@@ -568,7 +594,7 @@ function PagesAdmin() {
 
         <div className="flex gap-3 items-center">
           <button
-            className="bg-amber-500 hover:bg-amber-400 text-black px-5 py-2 rounded font-medium transition-colors"
+            className="bg-amber-500 hover:bg-amber-400 text-black px-5 py-2 rounded font-medium transition-colors flex items-center justify-center mx-auto"
           >
             {editing ? "Mettre à jour la page" : "Enregistrer"}
           </button>
