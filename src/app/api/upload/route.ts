@@ -20,13 +20,20 @@ export async function POST(req: Request) {
 
     // 🖋️ watermark SVG
     const buffer = Buffer.from(await file.arrayBuffer());
-    const watermark = Buffer.from(`
-      <svg width="800" height="200">
-        <text x="50%" y="50%" text-anchor="middle" fill="white" font-size="48" font-family="cursive" opacity="0.35" transform="rotate(-10, 400, 100)">
-          MMG Images
-        </text>
-      </svg>
-    `);
+    const watermarkSvg = `
+<svg width="800" height="200" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    text { font-family: Arial, sans-serif; }
+  </style>
+  <text x="50%" y="50%" text-anchor="middle" fill="white"
+    font-size="48" opacity="0.35" transform="rotate(-10, 400, 100)">
+    MMG Images
+  </text>
+</svg>
+`;
+
+const watermark = Buffer.from(watermarkSvg, "utf-8");
+
 
     const processedBuffer = await sharp(buffer)
       .resize(1600, null, { fit: "inside" })
