@@ -157,13 +157,18 @@ function TabButton({
    ╰────────────────────────────────────────────────────────╯ */
 function WorksAdmin() {
   const [form, setForm] = useState({
-    title: "",
-    location: "",
-    category: "",
-    prices: "",
-    alt: "",
-    story: "",
-  });
+  title: "",
+  location: "",
+  category: "",
+  prices: "",
+  alt: "",
+  story: "",
+  format1: "",
+  price1: "",
+  format2: "",
+  price2: "",
+});
+
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [status, setStatus] = useState("");
@@ -228,7 +233,7 @@ function WorksAdmin() {
     setFormError("⚠️ La catégorie est requise.");
     return;
   }
-
+  
   setStatus("⏳ Traitement…");
 
   try {
@@ -240,13 +245,25 @@ function WorksAdmin() {
         type: "image/webp",
       });
     }
+    const pricesField = [
+  form.format1 && form.price1
+    ? `${form.format1} - ${Number(form.price1) * 100}`
+    : null,
+  form.format2 && form.price2
+    ? `${form.format2} - ${Number(form.price2) * 100}`
+    : null,
+]
+  .filter(Boolean)
+  .join("\n");
+
+
 
     const fd = new FormData();
     fd.append("file", uploadFile);
     fd.append("title", form.title);
     fd.append("location", form.location);
     fd.append("category", categoryToSave);
-    fd.append("prices", form.prices);
+    fd.append("prices", pricesField);
     fd.append("alt", form.alt);
     fd.append("story", form.story);
 
@@ -254,7 +271,7 @@ function WorksAdmin() {
     if (!res.ok) throw new Error("Upload KO");
 
     setStatus("✅ Ajouté !");
-    setForm({ title: "", location: "", category: "", prices: "", alt: "", story: "" });
+    setForm({ title: "", location: "", category: "", prices: "", alt: "", story: "", format1: "", price1: "", format2: "", price2: "" });
     setFile(null);
     setPreview(null);
     setZoom(1);
@@ -381,15 +398,46 @@ function WorksAdmin() {
             </div>
           )}
 
-          <textarea
-            className="w-full p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600 h-28"
-            placeholder={`Ajoute les formats et leurs prix (un par ligne)
-Exemples :
-Tirage Fine Art A2 — 350 €
-Téléchargement HD — 120 €`}
-            value={form.prices}
-            onChange={(e) => setForm({ ...form, prices: e.target.value })}
-          />
+          <div className="space-y-2">
+  <label className="block text-sm text-neutral-400">
+    Formats & prix (remplis les montants uniquement)
+  </label>
+
+  <div className="grid sm:grid-cols-2 gap-2">
+    <input
+      type="text"
+      className="p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600"
+      placeholder="Ex : Tirage Fine Art A2"
+      value={form.format1 || ""}
+      onChange={(e) => setForm({ ...form, format1: e.target.value })}
+    />
+    <input
+      type="number"
+      className="p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600"
+      placeholder="Prix (en €)"
+      value={form.price1 || ""}
+      onChange={(e) => setForm({ ...form, price1: e.target.value })}
+    />
+  </div>
+
+  <div className="grid sm:grid-cols-2 gap-2">
+    <input
+      type="text"
+      className="p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600"
+      placeholder="Ex : Téléchargement HD"
+      value={form.format2 || ""}
+      onChange={(e) => setForm({ ...form, format2: e.target.value })}
+    />
+    <input
+      type="number"
+      className="p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600"
+      placeholder="Prix (en €)"
+      value={form.price2 || ""}
+      onChange={(e) => setForm({ ...form, price2: e.target.value })}
+    />
+  </div>
+</div>
+
 
           <button
             type="submit"
