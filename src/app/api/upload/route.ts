@@ -1,10 +1,9 @@
 import { put } from "@vercel/blob";
-import { kv } from "@vercel/kv";
+import { kv } from "@/lib/kv";
 import sharp from "sharp";
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
-
+export const runtime = "edge";
 
 export async function POST(req: Request) {
   try {
@@ -19,7 +18,7 @@ export async function POST(req: Request) {
     const alt = formData.get("alt") as string;
     const story = formData.get("story") as string;
 
-    // 🖋️ Convertir et ajouter le watermark
+    // Watermark
     const buffer = Buffer.from(await file.arrayBuffer());
     const watermark = Buffer.from(`
       <svg width="800" height="200">
@@ -35,11 +34,10 @@ export async function POST(req: Request) {
       .webp({ quality: 80 })
       .toBuffer();
 
-    // 📤 Upload vers Vercel Blob
+    // Upload vers Vercel Blob
     const fileName = `${Date.now()}.webp`;
     const blob = await put(fileName, processedBuffer, { access: "public" });
 
-    // 🆕 Construire l’objet de l’œuvre
     const newWork = {
       id: `${Date.now()}`,
       title,
@@ -57,10 +55,8 @@ export async function POST(req: Request) {
       createdAt: new Date().toISOString(),
     };
 
-    // 💾 Sauvegarder dans la base Redis (Upstash)
     await kv.lpush("works", JSON.stringify(newWork));
 
-    // ✅ Retour succès
     return NextResponse.json({ success: true, work: newWork });
   } catch (err: any) {
     console.error("Erreur upload:", err);
