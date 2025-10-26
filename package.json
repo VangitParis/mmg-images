@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
-    "start": "next start"
+    "start": "next start",
+    "vercel-build": "npm install --include=optional sharp && next build"
   },
   "dependencies": {
     "@next/font": "^14.2.15",
@@ -16,7 +17,8 @@
     "nodemailer": "^7.0.10",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-easy-crop": "^5.5.3"
+    "react-easy-crop": "^5.5.3",
+    "sharp": "^0.34.4"
   },
   "devDependencies": {
     "@types/node": "^20.19.23",
