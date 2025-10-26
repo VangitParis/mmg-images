@@ -31,10 +31,8 @@ export default function HomePage() {
       />
 
       {/* ✅ Galerie dynamique */}
-      <WallGallery
-        works={WORKS}
-        onOpen={(w: Work) => setOpenWork(w)}
-      />
+      <WallGallery onOpen={(w: Work) => setOpenWork(w)} />
+
 
       {/* ✅ Fenêtre d'œuvre */}
       <ArtworkSheet
