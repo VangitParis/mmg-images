@@ -52,11 +52,19 @@ const watermark = Buffer.from(watermarkSvg, "utf-8");
       src: blob.url,
       category,
       prices: prices
-        ? prices.split("\n").map((l) => {
-            const [label, amount] = l.split("-");
-            return { label: label.trim(), amount: Number(amount.trim()) };
-          })
-        : [],
+  ? prices
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0 && l.includes("-"))
+      .map((l) => {
+        const [label, amount] = l.split("-");
+        return {
+          label: label.trim(),
+          amount: Number(amount?.trim() || 0),
+        };
+      })
+  : [],
+
       alt,
       story,
       createdAt: new Date().toISOString(),
