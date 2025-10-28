@@ -378,7 +378,7 @@ function WorksAdmin() {
             <input
               type="file"
               accept="image/*"
-              capture="environment"
+              // capture="environment"
               className="hidden"
               onChange={onFile}
             />
@@ -642,7 +642,7 @@ function PagesAdmin() {
       image={preview}
       crop={crop}
       zoom={zoom}
-      aspect={16 / 9} // format page — tu peux mettre 4/3 si tu préfères
+      aspect={4 / 3} // format page — tu peux mettre 4/3 si tu préfères
       onCropChange={setCrop}
       onZoomChange={setZoom}
       onCropComplete={(_, pixels) => setCroppedPixels(pixels)}
