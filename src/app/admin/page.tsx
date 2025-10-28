@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Cropper from "react-easy-crop";
 import getCroppedImg from "@/utils/getCroppedImg";
 import type { Work, Price } from "@/types/work";
+import { getDefaultPrices, DEFAULT_PRICES } from "@/utils/getDefaultPrices";
 
 /* ─────────────────────────────
    Thème “signature” (ambré doux)
@@ -12,31 +13,6 @@ const SIG_ACCENT_BG = "bg-amber-500 hover:bg-amber-400";
 const SIG_ACCENT_TEXT = "text-amber-300";
 const SIG_ACCENT_BADGE = "border-amber-500 text-amber-300";
 
-/* ─────────────────────────────
-   Modèles de prix par défaut
-   ───────────────────────────── */
-const DEFAULT_PRICES: Record<string, Price[]> = {
-  Cerfs: [
-    { label: "Tirage Fine Art A2", amount: 35000 },
-    { label: "Téléchargement Web", amount: 10000 },
-  ],
-  Renards: [
-    { label: "Tirage Fine Art A3", amount: 30000 },
-    { label: "Téléchargement HD", amount: 9000 },
-  ],
-  Oiseaux: [
-    { label: "Tirage Fine Art A2", amount: 32000 },
-    { label: "Téléchargement Web", amount: 8000 },
-  ],
-  Écureuils: [
-    { label: "Tirage Fine Art A4", amount: 25000 },
-    { label: "Téléchargement Web", amount: 7000 },
-  ],
-  Autres: [
-    { label: "Tirage Fine Art", amount: 30000 },
-    { label: "Téléchargement HD", amount: 9000 },
-  ],
-};
 
 type Tab = "works" | "pages" | "pricing";
 
@@ -112,18 +88,14 @@ export default function AdminPage() {
 
       {/* Onglets */}
       <div className="flex gap-2 border-b border-neutral-800 mb-8">
-        <TabButton active={tab === "works"} onClick={() => setTab("works")} label="📸 Œuvres" />
-        <TabButton active={tab === "pages"} onClick={() => setTab("pages")} label="📄 Pages" />
-        <TabButton
-          active={tab === "pricing"}
-          onClick={() => setTab("pricing")}
-          label="💶 Tarifs & Catégories"
-        />
-      </div>
+  <TabButton active={tab === "works"} onClick={() => setTab("works")} label="📸 Œuvres" />
+  <TabButton active={tab === "pages"} onClick={() => setTab("pages")} label="📄 Pages" />
+</div>
+
 
       {tab === "works" && <WorksAdmin />}
-      {tab === "pages" && <PagesAdmin />}
-      {tab === "pricing" && <PricingAdmin />}
+{tab === "pages" && <PagesAdmin />}
+
     </main>
   );
 }
@@ -194,15 +166,36 @@ function WorksAdmin() {
     fetchWorks();
   }, []);
 
-  // Auto-complétion prix
-  useEffect(() => {
-    if (form.category && DEFAULT_PRICES[form.category]) {
-      const auto = DEFAULT_PRICES[form.category]
-        .map((p) => `${p.label} - ${p.amount}`)
-        .join("\n");
-      setForm((prev) => ({ ...prev, prices: auto }));
+// Auto-complétion prix (fusion KV + local)
+useEffect(() => {
+  (async () => {
+    if (!form.category) return;
+
+    try {
+      const res = await fetch("/api/pricing", { cache: "no-store" });
+      const data = await res.json();
+
+      // On fusionne KV + valeurs locales
+      const mergedPrices = { ...DEFAULT_PRICES, ...data };
+
+      if (mergedPrices[form.category]) {
+        const auto = mergedPrices[form.category]
+          .map((p: any) => `${p.label} - ${p.amount}`)
+          .join("\n");
+        setForm((prev) => ({ ...prev, prices: auto }));
+      }
+    } catch {
+      // si KV ne répond pas → on se rabat sur les prix par défaut
+      if (DEFAULT_PRICES[form.category]) {
+        const auto = DEFAULT_PRICES[form.category]
+          .map((p) => `${p.label} - ${p.amount}`)
+          .join("\n");
+        setForm((prev) => ({ ...prev, prices: auto }));
+      }
     }
-  }, [form.category]);
+  })();
+}, [form.category]);
+
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -720,94 +713,6 @@ function PagesAdmin() {
             ))}
           </div>
         )}
-      </div>
-    </>
-  );
-}
-
-
-
-/* ╭────────────────────────────────────────────────────────╮
-   │               T A R I F S   &   C A T É G O R I E S     │
-   ╰────────────────────────────────────────────────────────╯ */
-function PricingAdmin() {
-  const [categories, setCategories] = useState<string[]>([]);
-  const [newCat, setNewCat] = useState("");
-  const [status, setStatus] = useState("");
-
-  const loadCats = async () => {
-    const res = await fetch("/api/works", { cache: "no-store" });
-    const works = (await res.json()) as Work[];
-    const cats = Array.from(new Set(works.map((w) => w.category))).sort();
-    setCategories(cats);
-  };
-  useEffect(() => {
-    loadCats();
-  }, []);
-
-  const addCat = () => {
-    if (!newCat.trim()) return;
-    setCategories((prev) => Array.from(new Set([...prev, newCat.trim()])).sort());
-    setNewCat("");
-    setStatus("✅ Catégorie ajoutée (elle apparaîtra dans l’onglet Œuvres).");
-  };
-
-  return (
-    <>
-      <h2 className="text-xl font-light mb-2">Tarifs & Catégories</h2>
-      <p className={`text-sm mb-6 ${SIG_ACCENT_TEXT}`}>
-        Les modèles par défaut sont appliqués si aucun prix n’est saisi lors de l’ajout d’une œuvre.
-      </p>
-
-      <div className="grid sm:grid-cols-2 gap-8">
-        {/* Catégories */}
-        <div>
-          <h3 className="text-lg mb-3">Catégories existantes</h3>
-          <div className="flex flex-wrap gap-2">
-            {categories.map((c) => (
-              <span
-                key={c}
-                className={`px-3 py-1 rounded-full border text-sm ${SIG_ACCENT_BADGE}`}
-              >
-                {c}
-              </span>
-            ))}
-          </div>
-          <div className="mt-4 flex gap-2">
-            <input
-              className="p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600 flex-1"
-              placeholder="Nouvelle catégorie"
-              value={newCat}
-              onChange={(e) => setNewCat(e.target.value)}
-            />
-            <button
-              onClick={addCat}
-              className={`${SIG_ACCENT_BG} text-black px-4 py-2 rounded font-medium transition-colors`}
-            >
-              Ajouter
-            </button>
-          </div>
-          {status && <p className="text-sm mt-2 text-neutral-400">{status}</p>}
-        </div>
-
-        {/* Info modèles */}
-        <div>
-          <h3 className="text-lg mb-3">Modèles de prix</h3>
-          <div className="text-sm text-neutral-300 space-y-2">
-            {Object.entries(DEFAULT_PRICES).map(([cat, list]) => (
-              <div key={cat} className="border border-neutral-800 rounded-lg p-3">
-                <div className={`mb-1 ${SIG_ACCENT_TEXT}`}>{cat}</div>
-                <ul className="text-neutral-400 list-disc list-inside">
-                  {list.map((p, i) => (
-                    <li key={i}>
-                      {p.label} — {(p.amount / 100).toFixed(2).replace(".", ",")}€
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </>
   );
