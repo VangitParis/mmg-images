@@ -210,13 +210,11 @@ useEffect(() => {
   setFormError("");
   setStatus("");
 
-  // validations minimales
   if (!form.title || !form.alt || !file) {
     setFormError("⚠️ Titre, Alt et Image sont requis.");
     return;
   }
 
-  // 🧠 Si l'utilisateur a choisi "Nouvelle catégorie", on prend la saisie newCategory
   const categoryToSave =
     form.category === "__new__" && newCategory.trim()
       ? newCategory.trim()
@@ -226,30 +224,30 @@ useEffect(() => {
     setFormError("⚠️ La catégorie est requise.");
     return;
   }
-  
-  setStatus("⏳ Traitement…");
+
+  setStatus("⏳ Téléversement en cours…");
 
   try {
-    // Recadrage côté client → webp
+    // ⚡ Sur mobile : certaines images ne passent pas sans conversion
     let uploadFile = file;
     if (preview && croppedPixels) {
       const blob = await getCroppedImg(preview, croppedPixels);
+      if (!blob || blob.size === 0) throw new Error("Image vide après recadrage");
       uploadFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".webp"), {
         type: "image/webp",
       });
     }
+
     const pricesField = [
-  form.format1 && form.price1
-    ? `${form.format1} - ${Number(form.price1) * 100}`
-    : null,
-  form.format2 && form.price2
-    ? `${form.format2} - ${Number(form.price2) * 100}`
-    : null,
-]
-  .filter(Boolean)
-  .join("\n");
-
-
+      form.format1 && form.price1
+        ? `${form.format1} - ${Number(form.price1) * 100}`
+        : null,
+      form.format2 && form.price2
+        ? `${form.format2} - ${Number(form.price2) * 100}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     const fd = new FormData();
     fd.append("file", uploadFile);
@@ -260,21 +258,41 @@ useEffect(() => {
     fd.append("alt", form.alt);
     fd.append("story", form.story);
 
-    const res = await fetch("/api/upload", { method: "POST", body: fd });
-    if (!res.ok) throw new Error("Upload KO");
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      body: fd,
+    });
 
-    setStatus("✅ Ajouté !");
-    setForm({ title: "", location: "", category: "", prices: "", alt: "", story: "", format1: "", price1: "", format2: "", price2: "" });
+    const result = await res.json();
+    if (!res.ok || !result.success) {
+      console.error("Erreur upload (serveur):", result.error);
+      throw new Error(result.error || "Upload KO");
+    }
+
+    setStatus("✅ Ajouté avec succès !");
+    setForm({
+      title: "",
+      location: "",
+      category: "",
+      prices: "",
+      alt: "",
+      story: "",
+      format1: "",
+      price1: "",
+      format2: "",
+      price2: "",
+    });
     setFile(null);
     setPreview(null);
     setZoom(1);
-    setNewCategory(""); // on nettoie le champ
+    setNewCategory("");
     fetchWorks();
-  } catch (err) {
-    console.error(err);
-    setStatus("❌ Erreur d’envoi.");
+  } catch (err: any) {
+    console.error("Erreur d’envoi:", err.message);
+    setStatus("❌ Erreur d’envoi (image non valide sur mobile ?).");
   }
 };
+
 
   const remove = async (id: string) => {
     if (!confirm("Supprimer cette œuvre ?")) return;
