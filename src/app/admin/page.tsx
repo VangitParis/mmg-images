@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Cropper from "react-easy-crop";
 import getCroppedImg from "@/utils/getCroppedImg";
+import convertToPNG, { detectFormat } from "@/utils/convertToPNG";
 import type { Work } from "@/types/work";
 import { DEFAULT_PRICES } from "@/utils/getDefaultPrices";
 
@@ -227,13 +228,44 @@ function WorksAdmin() {
     })();
   }, [form.category]);
 
-  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (f) {
-      setFile(f);
-      setPreview(URL.createObjectURL(f));
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const f = e.target.files?.[0];
+  if (!f) return;
+
+  // 🔍 Détection réelle
+  const format = await detectFormat(f);
+  console.log("Format détecté :", format, " / type:", f.type);
+
+  // ❌ Cas JPEG XL → on bloque, impossible à convertir côté navigateur
+  if (format === "image/jxl") {
+    alert(
+      "Le format JPEG XL (.jxl) n’est pas supporté par les navigateurs. " +
+      "Merci de convertir l’image en JPEG ou PNG avant de l’uploader."
+    );
+    return;
+  }
+
+  // 🔄 Cas HEIC / inconnu → on tente une conversion PNG via canvas
+  if (format === "image/heic" || format === "jxl" || format === "unknown") {
+    try {
+      const converted = await convertToPNG(f);
+      setFile(converted);
+      setPreview(URL.createObjectURL(converted));
+    } catch (err) {
+      console.error("Échec conversion vers PNG :", err);
+      alert(
+        "Image non supportée. Merci d’utiliser une image JPEG ou PNG classique."
+      );
     }
-  };
+    return;
+  }
+
+  // ✅ JPEG / PNG / WEBP : on accepte tel quel
+  setFile(f);
+  setPreview(URL.createObjectURL(f));
+};
+
+
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

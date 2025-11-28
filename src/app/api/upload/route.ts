@@ -8,11 +8,29 @@ export async function POST(req: Request) {
   try {
     const sharp = (await import("sharp")).default; // ✅ import dynamique pour éviter les erreurs Edge
     const formData = await req.formData();
-    const file = formData.get("file") as File;
-    if (!file) return NextResponse.json({ success: false, error: "Aucun fichier" });
+const file = formData.get("file") as File;
+if (!file) {
+  return NextResponse.json({ success: false, error: "Aucun fichier" });
+}
 
-    const title = formData.get("title") as string;
-    const location = formData.get("location") as string;
+// 🧪 Vérif du type MIME côté serveur
+const mime = file.type || "application/octet-stream";
+
+// On accepte uniquement les formats que sharp gère bien sur Vercel
+const allowed = ["image/jpeg", "image/png", "image/webp"];
+
+if (!allowed.includes(mime)) {
+  return NextResponse.json(
+    {
+      success: false,
+      error: `Format non supporté (${mime}). Merci d’envoyer un JPEG, PNG ou WebP.`,
+    },
+    { status: 400 }
+  );
+}
+
+const title = formData.get("title") as string;
+const location = formData.get("location") as string;
     const category = formData.get("category") as string;
     const prices = formData.get("prices") as string;
     const alt = formData.get("alt") as string;
