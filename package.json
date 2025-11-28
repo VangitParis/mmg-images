@@ -18,7 +18,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-easy-crop": "^5.5.3",
-    "sharp": "^0.34.4"
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@types/node": "^20.19.23",

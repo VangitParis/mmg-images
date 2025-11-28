@@ -23,6 +23,18 @@ function savePages(pages: any[]) {
 }
 
 /* ─────────────────────────────
+   Formatage paragraphe (fallback serveur)
+   ───────────────────────────── */
+function formatContent(raw: string) {
+  return raw
+    .split(/\n{2,}|\r+/) // coupe sur les doubles sauts de ligne
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0)
+    .map((p) => `<p>${p}</p>`)
+    .join("\n\n");
+}
+
+/* ─────────────────────────────
    GET → liste toutes les pages
    ───────────────────────────── */
 export async function GET() {
@@ -66,7 +78,7 @@ export async function POST(req: Request) {
       title: title.trim(),
       image: image || "",
       alt: alt || "",
-      content: content || "",
+      content: content ? formatContent(content) : "",
     };
 
     pages.push(newPage);
@@ -81,7 +93,6 @@ export async function POST(req: Request) {
     );
   }
 }
-
 
 /* ─────────────────────────────
    PUT → modifier une page existante
@@ -110,10 +121,13 @@ export async function PUT(req: Request) {
 
     pages[index] = {
       ...pages[index],
-      title: title ?? pages[index].title,
+      title: title?.trim() ?? pages[index].title,
       image: image ?? pages[index].image,
       alt: alt ?? pages[index].alt,
-      content: content ?? pages[index].content,
+      content:
+        typeof content === "string"
+          ? formatContent(content)
+          : pages[index].content,
     };
 
     savePages(pages);
@@ -126,3 +140,5 @@ export async function PUT(req: Request) {
     );
   }
 }
+
+
