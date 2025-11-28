@@ -183,6 +183,7 @@ function WorksAdmin() {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedPixels, setCroppedPixels] = useState<any>(null);
+  const [aspect, setAspect] = useState<number | undefined>(4 / 3); // 4/3 par défaut (paysage classique)
 
   const fetchWorks = async () => {
     const res = await fetch("/api/works", { cache: "no-store" });
@@ -438,19 +439,74 @@ function WorksAdmin() {
             />
           </label>
 
-          {preview && (
-            <div className="relative w-full h-96 border border-neutral-800 rounded-lg overflow-hidden">
-              <Cropper
-                image={preview}
-                crop={crop}
-                zoom={zoom}
-                aspect={4 / 3}
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
-                onCropComplete={(_, pixels) => setCroppedPixels(pixels)}
-              />
-            </div>
-          )}
+          {/* 🔽 Sélection du ratio */}
+<div className="flex flex-wrap gap-2 text-xs text-neutral-300 mb-2">
+  <span className="text-neutral-500 mr-2">Format :</span>
+
+  <button
+    type="button"
+    onClick={() => setAspect(4 / 3)}
+    className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
+  >
+    4 / 3
+  </button>
+
+  <button
+    type="button"
+    onClick={() => setAspect(16 / 9)}
+    className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
+  >
+    16 / 9
+  </button>
+
+  <button
+    type="button"
+    onClick={() => setAspect(16 / 10)}
+    className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
+  >
+    16 / 10
+  </button>
+
+  <button
+    type="button"
+    onClick={() => setAspect(3 / 4)}
+    className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
+  >
+    3 / 4
+  </button>
+
+  <button
+    type="button"
+    onClick={() => setAspect(1)}
+    className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
+  >
+    1 / 1
+  </button>
+
+  <button
+    type="button"
+    onClick={() => setAspect(undefined)}
+    className="px-3 py-1 rounded border border-amber-500 text-amber-300 hover:bg-neutral-900/60"
+  >
+    Libre
+  </button>
+</div>
+
+{/* 🔽 Cropper */}
+{preview && (
+  <div className="relative w-full h-96 border border-neutral-800 rounded-lg overflow-hidden">
+    <Cropper
+      image={preview}
+      crop={crop}
+      zoom={zoom}
+      aspect={aspect} // ➜ dynamique
+      onCropChange={setCrop}
+      onZoomChange={setZoom}
+      onCropComplete={(_, pixels) => setCroppedPixels(pixels)}
+    />
+  </div>
+)}
+
 
           <div className="space-y-2">
             <label className="block text-sm text-neutral-400">
@@ -579,6 +635,8 @@ function PagesAdmin() {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedPixels, setCroppedPixels] = useState<any>(null);
+  const [aspect, setAspect] = useState<number | undefined>(4 / 3); // 4/3 par défaut (paysage classique)
+
 
   const load = async () => {
     const res = await fetch("/api/pages", { cache: "no-store" });
