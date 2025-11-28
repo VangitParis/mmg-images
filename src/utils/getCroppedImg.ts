@@ -1,7 +1,7 @@
 export default async function getCroppedImg(
   imageSrc: string,
   crop: any,
-  targetWidth: number = 2000 // largeur cible en pixels
+  targetWidth: number = 2000
 ) {
   const image = await createImage(imageSrc);
   const canvas = document.createElement("canvas");
@@ -9,12 +9,9 @@ export default async function getCroppedImg(
 
   const scaleX = image.naturalWidth / image.width;
   const scaleY = image.naturalHeight / image.height;
-
-  // Dimensions du crop original
   const cropWidth = crop.width * scaleX;
   const cropHeight = crop.height * scaleY;
 
-  // 🔥 Recalcule le crop en haute résolution
   const ratio = targetWidth / cropWidth;
   canvas.width = targetWidth;
   canvas.height = cropHeight * ratio;
@@ -31,10 +28,21 @@ export default async function getCroppedImg(
     canvas.height
   );
 
-  return new Promise<Blob>((resolve) => {
-    canvas.toBlob((blob) => resolve(blob!), "image/webp", 0.85); // compression maîtrisée
-  });
+  // 🔥 1er essai : WEBP
+  let blob: Blob | null = await new Promise((resolve) =>
+    canvas.toBlob(resolve, "image/webp", 0.85)
+  );
+
+  // ❗ Si le blob est vide (cas fréquent sur mobile) → PNG de secours
+  if (!blob || blob.size === 0) {
+    blob = await new Promise((resolve) =>
+      canvas.toBlob(resolve, "image/png", 1)
+    );
+  }
+
+  return blob!;
 }
+
 
 
 function createImage(url: string) {
