@@ -16,11 +16,17 @@ export default function Hero({ onEnter }: { onEnter: () => void }) {
         className="w-full h-[70vh] object-cover opacity-70"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-transparent to-transparent" />
-      <div className="absolute bottom-10 left-6 md:left-12">
-        <div className="text-5xl font-light text-neutral-200 drop-shadow">Regards Sauvages</div>
-        <div className="mt-2 text-neutral-400">Une collection d’instants suspendus</div>
-        <Button onClick={onEnter} className="mt-4 ">Entrer dans la galerie</Button>
-      </div>
+      <div className="absolute bottom-3 md:bottom-10 left-4 md:left-12">
+  <div className="text-4xl md:text-5xl font-light text-neutral-200 drop-shadow">
+    Regards Sauvages
+  </div>
+  <div className="mt-2 text-sm md:text-base text-neutral-400">
+    Une collection d’instants suspendus
+  </div>
+  <Button onClick={onEnter} className="mt-4">
+    Entrer dans la galerie
+  </Button>
+</div>
     </div>
   );
 }
