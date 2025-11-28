@@ -260,7 +260,7 @@ function WorksAdmin() {
     try {
       let uploadFile = file;
       if (preview && croppedPixels) {
-        const blob = await getCroppedImg(preview, croppedPixels);
+        const blob = await getCroppedImg(preview, croppedPixels, 2000);
         if (!blob || blob.size === 0)
           throw new Error("Image vide après recadrage");
         uploadFile = new File(
@@ -665,7 +665,7 @@ function PagesAdmin() {
 
       let uploadFile = file;
       if (file && preview && croppedPixels) {
-        const blob = await getCroppedImg(preview, croppedPixels);
+        const blob = await getCroppedImg(preview, croppedPixels, 2000);
         uploadFile = new File(
           [blob],
           file.name.replace(/\.[^/.]+$/, ".webp"),
