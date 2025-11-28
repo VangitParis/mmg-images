@@ -1,4 +1,7 @@
-// 🔍 Détection du format réel via les premiers octets du fichier
+// utils/convertToPNG.ts
+import { decode } from "@jsquash/jxl"; // ⬅️ nouveau
+
+// 🔍 Détection rapide du JXL via magic bytes (FF 0A / "JXL ")
 export async function detectFormat(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
   const bytes = new Uint8Array(arrayBuffer.slice(0, 12));
@@ -6,47 +9,63 @@ export async function detectFormat(file: File): Promise<string> {
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 
-  // JPEG XL : signatures fréquentes
+  // JPEG XL signatures (cf. spec FF 0A / 00 00 00 0C 4A 58 4C …) :contentReference[oaicite:1]{index=1}
   if (hex.startsWith("ff0a") || hex.includes("4a584c")) {
     return "image/jxl";
   }
 
-  // HEIC / HEIF (iPhone)
-  if (hex.includes("6674797068656963") || hex.includes("667479706d7036")) {
-    return "image/heic";
-  }
-
-  // Sinon on renvoie le type fourni par le navigateur
   return file.type || "unknown";
 }
 
-// 🔄 Conversion vers PNG (pour HEIC / formats exotiques mais décodables)
+// 🔄 Conversion générique → PNG (en sortie, ton backend fera le WebP comme aujourd’hui)
 export default async function convertToPNG(file: File): Promise<File> {
-  const img = document.createElement("img");
-  img.src = URL.createObjectURL(file);
+  const format = await detectFormat(file);
 
-  await new Promise<void>((resolve, reject) => {
-    img.onload = () => resolve();
-    img.onerror = () => reject(new Error("Impossible de charger l’image"));
-  });
+  let canvas: HTMLCanvasElement;
 
-  const canvas = document.createElement("canvas");
-  canvas.width = img.width;
-  canvas.height = img.height;
+  if (format === "image/jxl") {
+    // ✅ CAS JPEG XL : on décode avec @jsquash/jxl (WASM)
+    const arrayBuffer = await file.arrayBuffer();
+    const imageData = (await decode(arrayBuffer)) as ImageData; // decode renvoie un ImageData-like :contentReference[oaicite:2]{index=2}
 
-  const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(img, 0, 0);
+    canvas = document.createElement("canvas");
+    canvas.width = imageData.width;
+    canvas.height = imageData.height;
+    const ctx = canvas.getContext("2d")!;
+    ctx.putImageData(imageData, 0, 0);
+  } else {
+    // 🌍 JPEG / PNG / WebP / HEIC lisible par le navigateur
+    const img = document.createElement("img");
+    img.src = URL.createObjectURL(file);
 
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () =>
+        reject(new Error("Impossible de charger l’image pour conversion PNG"));
+    });
+
+    canvas = document.createElement("canvas");
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(img, 0, 0);
+  }
+
+  // 🎯 Sortie = vrai fichier PNG
   return new Promise<File>((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (!blob) return reject(new Error("Conversion PNG échouée"));
-      resolve(
-        new File(
-          [blob],
-          file.name.replace(/\.[^/.]+$/, ".png"),
-          { type: "image/png" }
-        )
-      );
-    }, "image/png");
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return reject(new Error("Conversion PNG échouée"));
+        resolve(
+          new File(
+            [blob],
+            file.name.replace(/\.[^/.]+$/, ".png"),
+            { type: "image/png" }
+          )
+        );
+      },
+      "image/png",
+      1
+    );
   });
 }

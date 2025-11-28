@@ -9,6 +9,7 @@
     "vercel-build": "npm install --include=optional sharp && next build"
   },
   "dependencies": {
+    "@jsquash/jxl": "^1.3.0",
     "@next/font": "^14.2.15",
     "@upstash/redis": "^1.35.6",
     "@vercel/blob": "^2.0.0",

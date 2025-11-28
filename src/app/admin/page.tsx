@@ -228,42 +228,32 @@ function WorksAdmin() {
     })();
   }, [form.category]);
 
-  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
   const f = e.target.files?.[0];
   if (!f) return;
 
-  // 🔍 Détection réelle
+  // On regarde vraiment ce que c’est
   const format = await detectFormat(f);
   console.log("Format détecté :", format, " / type:", f.type);
 
-  // ❌ Cas JPEG XL → on bloque, impossible à convertir côté navigateur
-  if (format === "image/jxl") {
-    alert(
-      "Le format JPEG XL (.jxl) n’est pas supporté par les navigateurs. " +
-      "Merci de convertir l’image en JPEG ou PNG avant de l’uploader."
-    );
-    return;
-  }
-
-  // 🔄 Cas HEIC / inconnu → on tente une conversion PNG via canvas
-  if (format === "image/heic" || format === "jxl" || format === "unknown") {
+  // JXL ou format chelou → on passe par notre pipeline PNG (et donc WebP derrière)
+  if (format === "image/jxl" || format === "unknown") {
     try {
       const converted = await convertToPNG(f);
       setFile(converted);
       setPreview(URL.createObjectURL(converted));
     } catch (err) {
-      console.error("Échec conversion vers PNG :", err);
-      alert(
-        "Image non supportée. Merci d’utiliser une image JPEG ou PNG classique."
-      );
+      console.error("Erreur conversion JXL → PNG :", err);
+      alert("Image non supportée. Merci d’utiliser une image JPEG/PNG.");
     }
     return;
   }
 
-  // ✅ JPEG / PNG / WEBP : on accepte tel quel
+  // Formats classiques → normal
   setFile(f);
   setPreview(URL.createObjectURL(f));
 };
+
 
 
 
