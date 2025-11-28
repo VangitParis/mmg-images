@@ -46,20 +46,20 @@ export async function POST(req: Request) {
 
     const pages = readPages();
 
-    // 🔒 slug unique
-    if (pages.some((p: any) => p.slug === slug)) {
-      return NextResponse.json(
-        { success: false, error: "Ce slug existe déjà." },
-        { status: 400 }
-      );
-    }
-
-    // 💡 nettoyage minimal du slug (SEO)
+    // 1) Nettoyage du slug AVANT la vérification
     const safeSlug = slug
       .toLowerCase()
       .replace(/[^a-z0-9-]/g, "-")
       .replace(/--+/g, "-")
       .replace(/^-|-$/g, "");
+
+    // 2) Vérif d'unicité sur le slug nettoyé
+    if (pages.some((p: any) => p.slug === safeSlug)) {
+      return NextResponse.json(
+        { success: false, error: "Ce slug existe déjà." },
+        { status: 400 }
+      );
+    }
 
     const newPage = {
       slug: safeSlug,
@@ -81,6 +81,7 @@ export async function POST(req: Request) {
     );
   }
 }
+
 
 /* ─────────────────────────────
    PUT → modifier une page existante

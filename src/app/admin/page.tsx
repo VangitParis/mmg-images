@@ -613,7 +613,7 @@ function PagesAdmin() {
     <>
       <h2 className="text-xl font-light mb-2">Pages libres</h2>
       <p className="text-sm text-amber-300 mb-6">
-        “À propos” doit avoir le slug <code className="text-neutral-300">about</code> pour apparaître
+        “À propos” doit avoir le slug <code className="text-neutral-300">a-propos</code> pour apparaître
         dans la Navbar. Les autres pages s’affichent automatiquement dans le Footer.
       </p>
 
@@ -622,7 +622,7 @@ function PagesAdmin() {
         <div className="grid sm:grid-cols-2 gap-4">
           <input
             className="p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600"
-            placeholder="Slug (ex: about, mentions-legales)"
+            placeholder="Slug (ex: a-propos, mentions-legales)"
             value={form.slug}
             onChange={(e) => setForm({ ...form, slug: e.target.value })}
             disabled={editing} // 👈 slug figé pendant édition
