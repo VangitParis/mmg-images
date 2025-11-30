@@ -1,44 +1,51 @@
+// app/api/upload/route.ts
+
 import { put } from "@vercel/blob";
 import { kv } from "@/lib/kv";
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs"; // ✅ nécessaire pour Sharp
+export const runtime = "nodejs";
+export const maxDuration = 60; // 60 secondes pour les gros fichiers
 
 export async function POST(req: Request) {
   try {
-    const sharp = (await import("sharp")).default; // ✅ import dynamique pour éviter les erreurs Edge
+    const sharp = (await import("sharp")).default;
     const formData = await req.formData();
-const file = formData.get("file") as File;
-if (!file) {
-  return NextResponse.json({ success: false, error: "Aucun fichier" });
-}
 
-// 🧪 Vérif du type MIME côté serveur
-const mime = file.type || "application/octet-stream";
+    const file = formData.get("file") as File | null;
+    if (!file) {
+      return NextResponse.json(
+        { success: false, error: "Aucun fichier" },
+        { status: 400 }
+      );
+    }
 
-// On accepte uniquement les formats que sharp gère bien sur Vercel
-const allowed = ["image/jpeg", "image/png", "image/webp"];
+    const title = (formData.get("title") as string) || "";
+    const location = (formData.get("location") as string) || "";
+    const category = (formData.get("category") as string) || "";
+    const prices = (formData.get("prices") as string) || "";
+    const alt = (formData.get("alt") as string) || "";
+    const story = (formData.get("story") as string) || "";
 
-if (!allowed.includes(mime)) {
-  return NextResponse.json(
-    {
-      success: false,
-      error: `Format non supporté (${mime}). Merci d’envoyer un JPEG, PNG ou WebP.`,
-    },
-    { status: 400 }
-  );
-}
+    console.log(
+      `📸 Fichier reçu : ${file.name} (${file.type || "unknown"}, ${(file.size / 1024 / 1024).toFixed(2)} MB)`
+    );
 
-const title = formData.get("title") as string;
-const location = formData.get("location") as string;
-    const category = formData.get("category") as string;
-    const prices = formData.get("prices") as string;
-    const alt = formData.get("alt") as string;
-    const story = formData.get("story") as string;
+    // 🔍 Conversion en Buffer
+    const arrayBuffer = await file.arrayBuffer();
+    const inputBuffer = Buffer.from(arrayBuffer);
 
-    // 🖋️ watermark SVG
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const watermarkSvg = `
+    let processedBuffer: Buffer;
+
+    try {
+      // Meta pour debug
+      const metadata = await sharp(inputBuffer).metadata();
+      console.log(
+        `📐 Format détecté par Sharp : ${metadata.format} | ${metadata.width}x${metadata.height}px`
+      );
+
+      // 🖋️ Watermark SVG
+      const watermarkSvg = `
 <svg width="800" height="200" xmlns="http://www.w3.org/2000/svg">
   <style>
     text { font-family: Arial, sans-serif; }
@@ -49,19 +56,66 @@ const location = formData.get("location") as string;
   </text>
 </svg>
 `;
+      const watermark = Buffer.from(watermarkSvg, "utf-8");
 
-const watermark = Buffer.from(watermarkSvg, "utf-8");
+      // 🎨 Traitement image final (standardisation en WebP)
+      processedBuffer = await sharp(inputBuffer)
+        .resize(1600, null, {
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .composite([{ input: watermark, gravity: "center" }])
+        .webp({ quality: 80, effort: 4 })
+        .toBuffer();
 
+      console.log(
+        `✅ Image traitée, taille finale : ${(processedBuffer.length / 1024).toFixed(2)} KB`
+      );
+    } catch (sharpError: any) {
+      console.error("❌ Erreur Sharp :", sharpError.message);
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Format non supporté par le serveur. Merci d'envoyer une image compatible (JPEG, PNG, WebP ou image convertie).",
+        },
+        { status: 400 }
+      );
+    }
 
-    const processedBuffer = await sharp(buffer)
-      .resize(1600, null, { fit: "inside" })
-      .composite([{ input: watermark, gravity: "center" }])
-      .webp({ quality: 80 })
-      .toBuffer();
+    // 🧼 Slugification du titre pour le nom de fichier
+    const sanitizedTitle = title
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "")
+      .substring(0, 50);
+
+    const fileName = `${Date.now()}-${sanitizedTitle || "image"}.webp`;
 
     // 📤 Upload vers Vercel Blob
-    const fileName = `${Date.now()}.webp`;
-    const blob = await put(fileName, processedBuffer, { access: "public" });
+    const blob = await put(fileName, processedBuffer, {
+      access: "public",
+      contentType: "image/webp",
+    });
+
+    console.log(`📤 Uploadé sur Blob : ${blob.url}`);
+
+    // 💶 Parsing du champ prices "format - prixEnCentimes"
+    const parsedPrices =
+      prices
+        ?.split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0 && l.includes("-"))
+        .map((l) => {
+          const [label, amount] = l.split("-");
+          return {
+            label: label.trim(),
+            amount: Number((amount || "").trim() || 0),
+          };
+        }) || [];
 
     const newWork = {
       id: `${Date.now()}`,
@@ -69,31 +123,23 @@ const watermark = Buffer.from(watermarkSvg, "utf-8");
       location,
       src: blob.url,
       category,
-      prices: prices
-  ? prices
-      .split("\n")
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0 && l.includes("-"))
-      .map((l) => {
-        const [label, amount] = l.split("-");
-        return {
-          label: label.trim(),
-          amount: Number(amount?.trim() || 0),
-        };
-      })
-  : [],
-
+      prices: parsedPrices,
       alt,
       story,
       createdAt: new Date().toISOString(),
     };
 
-    // 💾 Sauvegarde dans Upstash KV
     await kv.lpush("works", JSON.stringify(newWork));
 
-    return NextResponse.json({ success: true, work: newWork });
+    return NextResponse.json({
+      success: true,
+      work: newWork,
+    });
   } catch (err: any) {
-    console.error("Erreur upload:", err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error("❌ Erreur upload:", err);
+    return NextResponse.json(
+      { success: false, error: err.message || "Erreur serveur" },
+      { status: 500 }
+    );
   }
 }

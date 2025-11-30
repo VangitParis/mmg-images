@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -228,126 +229,189 @@ function WorksAdmin() {
     })();
   }, [form.category]);
 
+// Fonction onFile mise à jour pour accepter JXL sans conversion côté client
+
 const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
   const f = e.target.files?.[0];
   if (!f) return;
 
-  // On regarde vraiment ce que c’est
-  const format = await detectFormat(f);
-  console.log("Format détecté :", format, " / type:", f.type);
+  setStatus("⏳ Chargement de l'image...");
+  setFormError("");
 
-  // JXL ou format chelou → on passe par notre pipeline PNG (et donc WebP derrière)
-  if (format === "image/jxl" || format === "unknown") {
-    try {
-      const converted = await convertToPNG(f);
-      setFile(converted);
-      setPreview(URL.createObjectURL(converted));
-    } catch (err) {
-      console.error("Erreur conversion JXL → PNG :", err);
-      alert("Image non supportée. Merci d’utiliser une image JPEG/PNG.");
+  try {
+    // 🔍 Détection rapide du format
+    const format = await detectFormat(f);
+    console.log(`📸 Format détecté : ${format} | MIME : ${f.type}`);
+
+    // ✅ JXL détecté → Message d'info, pas de conversion côté client
+    if (format === "image/jxl") {
+      setStatus("🎨 Image JXL détectée - Sera convertie lors de l'upload");
+      setFile(f);
+      // Pas de preview pour JXL (navigateur ne peut pas l'afficher)
+      setPreview(null);
+      return;
     }
-    return;
-  }
 
-  // Formats classiques → normal
-  setFile(f);
-  setPreview(URL.createObjectURL(f));
+    // 🖼️ Formats standards → Preview normal
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
+    setStatus("");
+    
+  } catch (err) {
+    console.error("Erreur :", err);
+    setFormError("❌ Erreur lors du chargement.");
+    setStatus("");
+  }
 };
 
 
 
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError("");
-    setStatus("");
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
-    if (!form.title || !form.alt || !file) {
-      setFormError("⚠️ Titre, Alt et Image sont requis.");
-      return;
-    }
+const submit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setFormError("");
+  setStatus("");
 
-    const categoryToSave =
-      form.category === "__new__" && newCategory.trim()
-        ? newCategory.trim()
-        : form.category;
+  if (!form.title || !form.alt || !file) {
+    setFormError("⚠️ Titre, Alt et Image sont requis.");
+    return;
+  }
 
-    if (!categoryToSave) {
-      setFormError("⚠️ La catégorie est requise.");
-      return;
-    }
+  const categoryToSave =
+    form.category === "__new__" && newCategory.trim()
+      ? newCategory.trim()
+      : form.category;
 
-    setStatus("⏳ Téléversement en cours…");
+  if (!categoryToSave) {
+    setFormError("⚠️ La catégorie est requise.");
+    return;
+  }
 
-    try {
-      let uploadFile = file;
-      if (preview && croppedPixels) {
-        const blob = await getCroppedImg(preview, croppedPixels, 2000);
-        if (!blob || blob.size === 0)
-          throw new Error("Image vide après recadrage");
-        uploadFile = new File(
-          [blob],
-          file.name.replace(/\.[^/.]+$/, ".webp"),
-          {
-            type: "image/webp",
-          }
-        );
-      }
+  setStatus("⏳ Téléversement en cours...");
 
-      const pricesField = [
-        form.format1 && form.price1
-          ? `${form.format1} - ${Number(form.price1) * 100}`
-          : null,
-        form.format2 && form.price2
-          ? `${form.format2} - ${Number(form.price2) * 100}`
-          : null,
-      ]
-        .filter(Boolean)
-        .join("\n");
+  try {
+    // 1️⃣ On part toujours de l'original
+    let uploadFile: File = file;
 
-      const fd = new FormData();
-      fd.append("file", uploadFile);
-      fd.append("title", form.title);
-      fd.append("location", form.location);
-      fd.append("category", categoryToSave);
-      fd.append("prices", pricesField);
-      fd.append("alt", form.alt);
-      fd.append("story", form.story);
+    // 🔍 Détection du format réel (magic bytes) + extension
+    const detectedFormat = await detectFormat(file);
+    const ext = file.name.split(".").pop()?.toLowerCase();
 
-      const res = await fetch("/api/upload", {
+    // 2️⃣ Cas spécial JXL → passage par /api/convert (Cloudinary)
+    if (detectedFormat === "image/jxl" || ext === "jxl" || !file.type) {
+      console.log("🔥 JXL détecté, conversion via /api/convert ...");
+      setStatus("⏳ Conversion de l'image (format JXL) ...");
+
+      const convFd = new FormData();
+      convFd.append("file", file);
+
+      const convRes = await fetch("/api/convert", {
         method: "POST",
-        body: fd,
+        body: convFd,
       });
 
-      const result = await res.json();
-      if (!res.ok || !result.success) {
-        console.error("Erreur upload (serveur):", result.error);
-        throw new Error(result.error || "Upload KO");
+      if (!convRes.ok) {
+        throw new Error("Erreur lors de la conversion JXL → WebP");
       }
 
-      setStatus("✅ Ajouté avec succès !");
-      setForm({
-        title: "",
-        location: "",
-        category: "",
-        prices: "",
-        alt: "",
-        story: "",
-        format1: "",
-        price1: "",
-        format2: "",
-        price2: "",
+      const convBlob = await convRes.blob();
+      uploadFile = new File(
+        [convBlob],
+        file.name.replace(/\.[^/.]+$/, ".webp"),
+        { type: "image/webp" }
+      );
+
+      console.log("✅ JXL converti → WebP côté client", {
+        name: uploadFile.name,
+        type: uploadFile.type,
+        size: uploadFile.size,
       });
-      setFile(null);
-      setPreview(null);
-      setZoom(1);
-      setNewCategory("");
-      fetchWorks();
-    } catch (err: any) {
-      console.error("Erreur d’envoi:", err.message);
-      setStatus("❌ Erreur d’envoi (image non valide sur mobile ?).");
     }
-  };
+    // 3️⃣ Autres formats exotiques → fallback PNG
+    else if (!ALLOWED_TYPES.includes(file.type)) {
+      console.log("📲 Format non standard, conversion en PNG …", file.type);
+      uploadFile = await convertToPNG(file);
+    }
+
+    // 4️⃣ Recadrage éventuel (si on a un preview)
+    if (preview && croppedPixels) {
+      const blob = await getCroppedImg(preview, croppedPixels, 2000);
+      if (!blob || blob.size === 0)
+        throw new Error("Image vide après recadrage");
+
+      uploadFile = new File(
+        [blob],
+        uploadFile.name.replace(/\.[^/.]+$/, ".webp"),
+        { type: "image/webp" }
+      );
+    }
+
+    console.log("DEBUG FICHIER ENVOYÉ:", {
+      name: uploadFile.name,
+      type: uploadFile.type,
+      size: uploadFile.size,
+    });
+
+    // 5️⃣ Formats & prix
+    const pricesField = [
+      form.format1 && form.price1
+        ? `${form.format1} - ${Number(form.price1) * 100}`
+        : null,
+      form.format2 && form.price2
+        ? `${form.format2} - ${Number(form.price2) * 100}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    // 6️⃣ Envoi final vers /api/upload (Sharp + watermark + Blob)
+    const fd = new FormData();
+    fd.append("file", uploadFile);
+    fd.append("title", form.title);
+    fd.append("location", form.location);
+    fd.append("category", categoryToSave);
+    fd.append("prices", pricesField);
+    fd.append("alt", form.alt);
+    fd.append("story", form.story);
+
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      body: fd,
+    });
+
+    const result = await res.json();
+    if (!res.ok || !result.success) {
+      console.error("Erreur upload (serveur):", result.error);
+      throw new Error(result.error || "Upload KO");
+    }
+
+    setStatus("✅ Ajouté avec succès !");
+    setForm({
+      title: "",
+      location: "",
+      category: "",
+      prices: "",
+      alt: "",
+      story: "",
+      format1: "",
+      price1: "",
+      format2: "",
+      price2: "",
+    });
+    setFile(null);
+    setPreview(null);
+    setZoom(1);
+    setNewCategory("");
+    fetchWorks();
+  } catch (err: any) {
+    console.error("Erreur d’envoi:", err.message);
+    setStatus("❌ Erreur d’envoi.");
+  }
+};
+
+
 
   const remove = async (id: string) => {
     if (!confirm("Supprimer cette œuvre ?")) return;
@@ -453,12 +517,13 @@ const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
                 ? "Image sélectionnée ✅"
                 : "📷 Choisir une image ou prendre une photo"}
             </span>
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={onFile}
-            />
+           <input
+  type="file"
+  accept="image/*,.jxl"
+  className="hidden"
+  onChange={onFile}
+/>
+
           </label>
 
           {/* 🔽 Sélection du ratio */}
