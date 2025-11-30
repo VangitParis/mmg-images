@@ -36,7 +36,7 @@ export async function convertToWebpWithCloudinary(
   );
 
   const uploadJson = await uploadRes.json();
-
+  
   if (!uploadRes.ok || !uploadJson.public_id) {
     console.error("Cloudinary upload error:", uploadJson);
     throw new Error(
