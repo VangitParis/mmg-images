@@ -289,24 +289,31 @@ const submit = async (e: React.FormEvent) => {
   setStatus("⏳ Téléversement en cours...");
 
   try {
-    // 1️⃣ Point de départ : fichier original
     let uploadFile: File = file;
 
-    // 🔍 Détection du format réel + extension
+    // 🔍 Format détecté + extension
     const detectedFormat = await detectFormat(file);
     const ext = file.name.split(".").pop()?.toLowerCase();
     const MAX_CLOUDINARY_BYTES = 10 * 1024 * 1024; // 10 Mo
 
-    // 2️⃣ Cas spécial JXL → passage par /api/convert (Cloudinary)
-    if (detectedFormat === "image/jxl" || ext === "jxl" || (!file.type && ext === "jxl")) {
+    console.log("DEBUG FICHIER ORIGINAL:", {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      detectedFormat,
+      ext,
+    });
+
+    // 1️⃣ Cas JXL → /api/convert (Cloudinary)
+    if (detectedFormat === "image/jxl" || ext === "jxl") {
       console.log("🔥 JXL détecté, tentative de conversion via /api/convert ...");
 
       if (file.size > MAX_CLOUDINARY_BYTES) {
-        setStatus("");
-        setFormError(
+        const msg =
           "❌ L'image JXL est trop lourde pour la conversion automatique (limite 10 Mo Cloudinary). " +
-            "Merci de l'exporter en JPEG ou WebP depuis votre logiciel avant l'upload."
-        );
+          "Merci de l'exporter en JPEG ou WebP depuis votre logiciel avant l'upload.";
+        setStatus(msg);
+        setFormError(msg);
         return;
       }
 
@@ -321,16 +328,31 @@ const submit = async (e: React.FormEvent) => {
       });
 
       const contentType = convRes.headers.get("content-type") || "";
+      console.log("DEBUG /api/convert status:", convRes.status, contentType);
 
       if (!convRes.ok) {
+        let serverError = "";
         if (contentType.includes("application/json")) {
           const errJson = await convRes.json().catch(() => null);
-          throw new Error(
-            errJson?.error ||
-              "Erreur lors de la conversion JXL → WebP (Cloudinary)."
-          );
+          serverError = errJson?.error || "";
         }
-        throw new Error("Erreur réseau lors de la conversion JXL → WebP.");
+
+        // Cas 413 prod (payload trop gros sur Vercel)
+        if (convRes.status === 413) {
+          const msg =
+            "❌ L'image est trop lourde pour être traitée par le serveur (erreur 413). " +
+            "Merci de l'exporter en JPEG/WebP avant l'upload.";
+          setStatus(msg);
+          setFormError(msg);
+          throw new Error(msg);
+        }
+
+        const msg =
+          serverError ||
+          "Erreur lors de la conversion JXL → WebP (Cloudinary ou serveur).";
+        setStatus(msg);
+        setFormError(msg);
+        throw new Error(msg);
       }
 
       const convBlob = await convRes.blob();
@@ -345,14 +367,17 @@ const submit = async (e: React.FormEvent) => {
         type: uploadFile.type,
         size: uploadFile.size,
       });
+
+      setStatus("⏳ Conversion terminée, envoi au serveur…");
     }
-    // 3️⃣ Autres formats exotiques → fallback PNG
+    // 2️⃣ Autres formats non standard → PNG côté client
     else if (!ALLOWED_TYPES.includes(file.type)) {
       console.log("📲 Format non standard, conversion en PNG …", file.type);
+      setStatus("⏳ Conversion de l'image en PNG…");
       uploadFile = await convertToPNG(file);
     }
 
-    // 4️⃣ Recadrage éventuel (si on a un preview + crop)
+    // 3️⃣ Recadrage éventuel
     if (preview && croppedPixels) {
       const blob = await getCroppedImg(preview, croppedPixels, 2000);
       if (!blob || blob.size === 0) {
@@ -366,13 +391,13 @@ const submit = async (e: React.FormEvent) => {
       );
     }
 
-    console.log("DEBUG FICHIER ENVOYÉ:", {
+    console.log("DEBUG FICHIER ENVOYÉ À /api/upload:", {
       name: uploadFile.name,
       type: uploadFile.type,
       size: uploadFile.size,
     });
 
-    // 5️⃣ Formats & prix
+    // 4️⃣ Formats & prix
     const pricesField = [
       form.format1 && form.price1
         ? `${form.format1} - ${Number(form.price1) * 100}`
@@ -384,7 +409,9 @@ const submit = async (e: React.FormEvent) => {
       .filter(Boolean)
       .join("\n");
 
-    // 6️⃣ Envoi final vers /api/upload
+    // 5️⃣ Envoi final vers /api/upload
+    setStatus("⏳ Envoi au serveur…");
+
     const fd = new FormData();
     fd.append("file", uploadFile);
     fd.append("title", form.title);
@@ -399,11 +426,14 @@ const submit = async (e: React.FormEvent) => {
       body: fd,
     });
 
-    const result = await res.json();
+    const result = await res.json().catch(() => null);
 
-    if (!res.ok || !result.success) {
-      console.error("Erreur upload (serveur):", result.error);
-      throw new Error(result.error || "Upload KO");
+    if (!res.ok || !result?.success) {
+      console.error("Erreur upload (serveur):", result?.error);
+      const msg = result?.error || "Upload KO (erreur serveur).";
+      setStatus(msg);
+      setFormError(msg);
+      throw new Error(msg);
     }
 
     setStatus("✅ Ajouté avec succès !");
@@ -425,11 +455,14 @@ const submit = async (e: React.FormEvent) => {
     setNewCategory("");
     fetchWorks();
   } catch (err: any) {
-    console.error("Erreur d’envoi:", err.message);
-    setStatus("❌ Erreur d’envoi.");
-    setFormError(err.message || "❌ Erreur d’envoi.");
+    console.error("Erreur d’envoi:", err?.message || err);
+    const msg = err?.message || "❌ Erreur d’envoi.";
+    setStatus(msg);
+    setFormError(msg);
   }
 };
+
+
 
 
   const remove = async (id: string) => {
