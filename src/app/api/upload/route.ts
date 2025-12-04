@@ -143,26 +143,16 @@
 //     );
 //   }
 // }
-import { put } from "@vercel/blob";
 import { kv } from "@/lib/kv";
 import { NextResponse } from "next/server";
-import sharp from "sharp";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
-    const file = formData.get("file") as File | null;
 
-    if (!file) {
-      return NextResponse.json(
-        { success: false, error: "Aucun fichier" },
-        { status: 400 }
-      );
-    }
-
+    const fileUrl = String(formData.get("fileUrl") || "");
     const title = String(formData.get("title") || "");
     const location = String(formData.get("location") || "");
     const category = String(formData.get("category") || "");
@@ -170,46 +160,12 @@ export async function POST(req: Request) {
     const alt = String(formData.get("alt") || "");
     const story = String(formData.get("story") || "");
 
-    const inputBuffer = Buffer.from(await file.arrayBuffer());
-
-    /* ✅ WATERMARK SVG */
-    const watermarkSvg = `
-      <svg width="800" height="200" xmlns="http://www.w3.org/2000/svg">
-        <style>
-          text { font-family: Arial, sans-serif; }
-        </style>
-        <text x="50%" y="50%" text-anchor="middle" fill="white"
-          font-size="48" opacity="0.25" transform="rotate(-10, 400, 100)">
-          MMG Images
-        </text>
-      </svg>
-    `;
-    const watermark = Buffer.from(watermarkSvg);
-
-    /* ✅ OPTIMISATION + WATERMARK FINAL WEBP */
-    const processed = await sharp(inputBuffer)
-      .resize(2000, null, {
-        fit: "inside",
-        withoutEnlargement: true,
-      })
-      .composite([{ input: watermark, gravity: "center" }])
-      .webp({ quality: 78, effort: 5 })
-      .toBuffer();
-
-    const safeTitle = title
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .slice(0, 40);
-
-    const fileName = `${Date.now()}-${safeTitle || "image"}.webp`;
-
-    /* ✅ UPLOAD VERCEL BLOB */
-    const blob = await put(fileName, processed, {
-      access: "public",
-      contentType: "image/webp",
-    });
+    if (!fileUrl || !title || !alt) {
+      return NextResponse.json(
+        { success: false, error: "Données manquantes" },
+        { status: 400 }
+      );
+    }
 
     const parsedPrices =
       prices
@@ -218,17 +174,14 @@ export async function POST(req: Request) {
         .filter((l) => l.includes("-"))
         .map((l) => {
           const [label, amount] = l.split("-");
-          return {
-            label: label.trim(),
-            amount: Number(amount.trim()),
-          };
+          return { label: label.trim(), amount: Number(amount.trim()) };
         }) || [];
 
     const newWork = {
       id: Date.now().toString(),
       title,
       location,
-      src: blob.url,
+      src: fileUrl,
       category,
       prices: parsedPrices,
       alt,
@@ -238,12 +191,9 @@ export async function POST(req: Request) {
 
     await kv.lpush("works", JSON.stringify(newWork));
 
-    return NextResponse.json({
-      success: true,
-      work: newWork,
-    });
+    return NextResponse.json({ success: true, work: newWork });
   } catch (err: any) {
-    console.error("UPLOAD ERROR:", err);
+    console.error("UPLOAD META ERROR:", err);
     return NextResponse.json(
       { success: false, error: err.message || "Erreur serveur" },
       { status: 500 }

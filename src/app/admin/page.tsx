@@ -5,8 +5,7 @@ import { useEffect, useState } from "react";
 import Cropper from "react-easy-crop";
 import getCroppedImg from "@/utils/getCroppedImg";
 import convertToPNG, { detectFormat } from "@/utils/convertToPNG";
-import { optimizeIfTooLarge } from "@/utils/optimizeIfTooLarge";
-import { preCompressForSafari } from "@/utils/preCompressForSafari";
+import { upload } from "@vercel/blob/client";
 import type { Work } from "@/types/work";
 import { DEFAULT_PRICES } from "@/utils/getDefaultPrices";
 
@@ -275,48 +274,45 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 const submit = async (e: React.FormEvent) => {
   e.preventDefault();
-  setStatus("");
   setFormError("");
+  setStatus("");
 
   if (!form.title || !form.alt || !file) {
-    setFormError("⚠️ Champs obligatoires manquants.");
+    setFormError("⚠️ Titre, Alt et Image sont requis.");
     return;
   }
 
   const categoryToSave =
-    form.category === "__new__" ? newCategory.trim() : form.category;
+    form.category === "__new__" && newCategory.trim()
+      ? newCategory.trim()
+      : form.category;
+
+  if (!categoryToSave) {
+    setFormError("⚠️ La catégorie est requise.");
+    return;
+  }
 
   try {
-    let uploadFile = file;
+    setStatus("⏳ Téléversement sécurisé en cours…");
 
-    const MAX_CLIENT_SIZE = 4 * 1024 * 1024; // 4 Mo
+    // ✅ 1. Upload DIRECT vers Vercel Blob (sans passer par /api/upload)
+    const blob = await upload(file.name, file, {
+      access: "public",
+      handleUploadUrl: "/api/blob-upload",
+    });
 
-    // ✅ COMPRESSION CLIENT SI > 4 MO
-    if (file.size > MAX_CLIENT_SIZE) {
-      setStatus("📦 Optimisation de l’image…");
+    console.log("✅ Upload Blob OK :", blob.url);
 
-      const img = new Image();
-      img.src = URL.createObjectURL(file);
-      await new Promise((res) => (img.onload = res));
+    setStatus("⏳ Traitement serveur…");
 
-      const canvas = document.createElement("canvas");
-      const scale = 2000 / img.width;
-      canvas.width = 2000;
-      canvas.height = img.height * scale;
-
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-      const blob = await new Promise<Blob>((resolve) =>
-        canvas.toBlob((b) => resolve(b!), "image/webp", 0.8)
-      );
-
-      uploadFile = new File([blob], file.name.replace(/\..+$/, ".webp"), {
-        type: "image/webp",
-      });
-    }
-
-    setStatus("⏳ Envoi vers le serveur…");
+    // ✅ 2. Envoi des métadonnées vers TON serveur
+    const fd = new FormData();
+    fd.append("fileUrl", blob.url);
+    fd.append("title", form.title);
+    fd.append("location", form.location);
+    fd.append("category", categoryToSave);
+    fd.append("alt", form.alt);
+    fd.append("story", form.story);
 
     const pricesField = [
       form.format1 && form.price1
@@ -329,32 +325,41 @@ const submit = async (e: React.FormEvent) => {
       .filter(Boolean)
       .join("\n");
 
-    const fd = new FormData();
-    fd.append("file", uploadFile);
-    fd.append("title", form.title);
-    fd.append("location", form.location);
-    fd.append("category", categoryToSave);
     fd.append("prices", pricesField);
-    fd.append("alt", form.alt);
-    fd.append("story", form.story);
-    
-    // ✅ SAFARI SAFE PRE-COMPRESSION
-if (/iphone|ipad|safari/i.test(navigator.userAgent)) {
-  setStatus("📱 Optimisation Safari...");
-  uploadFile = await preCompressForSafari(uploadFile);
-}
 
-    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      body: fd,
+    });
+
     const result = await res.json();
 
-    if (!result.success) throw new Error(result.error);
+    if (!res.ok || !result?.success) {
+      throw new Error(result?.error || "Erreur serveur");
+    }
 
-    setStatus("✅ Image envoyée !");
+    setStatus("✅ Ajouté avec succès !");
+    setForm({
+      title: "",
+      location: "",
+      category: "",
+      prices: "",
+      alt: "",
+      story: "",
+      format1: "",
+      price1: "",
+      format2: "",
+      price2: "",
+    });
+    setFile(null);
+    setPreview(null);
+    setZoom(1);
+    setNewCategory("");
     fetchWorks();
   } catch (err: any) {
-    console.error(err);
-    setFormError(err.message);
-    setStatus("❌ Échec");
+    console.error("❌ ERROR SUBMIT:", err);
+    setStatus("❌ Échec de l’envoi");
+    setFormError(err.message || "Erreur inconnue");
   }
 };
 
