@@ -293,19 +293,34 @@ const submit = async (e: React.FormEvent) => {
   }
 
   try {
-    setStatus("⏳ Téléversement sécurisé en cours…");
+    setStatus("⏳ Préparation de l’image…");
 
-    // ✅ 1. Upload DIRECT vers Vercel Blob (sans passer par /api/upload)
-    const blob = await upload(file.name, file, {
+    // ✅ 1. CRÉATION DE L'IMAGE CROPPÉE RÉELLE
+    let fileToUpload: File = file;
+
+    if (preview && croppedPixels) {
+      const croppedBlob = await getCroppedImg(preview, croppedPixels, 2000);
+
+      fileToUpload = new File(
+        [croppedBlob],
+        file.name.replace(/\.[^/.]+$/, ".webp"),
+        { type: "image/webp" }
+      );
+    }
+
+    setStatus("⏳ Upload sécurisé vers Vercel…");
+
+    // ✅ 2. UPLOAD VERCEL BLOB (SANS OPTIONS INTERDITES)
+    const blob = await upload(fileToUpload.name, fileToUpload, {
       access: "public",
       handleUploadUrl: "/api/blob-upload",
     });
 
     console.log("✅ Upload Blob OK :", blob.url);
 
-    setStatus("⏳ Traitement serveur…");
+    setStatus("⏳ Enregistrement des données…");
 
-    // ✅ 2. Envoi des métadonnées vers TON serveur
+    // ✅ 3. ENVOI DES MÉTADONNÉES VERS TON API
     const fd = new FormData();
     fd.append("fileUrl", blob.url);
     fd.append("title", form.title);
@@ -338,7 +353,8 @@ const submit = async (e: React.FormEvent) => {
       throw new Error(result?.error || "Erreur serveur");
     }
 
-    setStatus("✅ Ajouté avec succès !");
+    // ✅ 4. RESET COMPLET FORMULAIRE
+    setStatus("✅ Œuvre ajoutée avec succès !");
     setForm({
       title: "",
       location: "",
@@ -351,6 +367,7 @@ const submit = async (e: React.FormEvent) => {
       format2: "",
       price2: "",
     });
+
     setFile(null);
     setPreview(null);
     setZoom(1);
@@ -362,6 +379,8 @@ const submit = async (e: React.FormEvent) => {
     setFormError(err.message || "Erreur inconnue");
   }
 };
+
+
 
 
 
@@ -536,6 +555,16 @@ const submit = async (e: React.FormEvent) => {
                 onZoomChange={setZoom}
                 onCropComplete={(_, pixels) => setCroppedPixels(pixels)}
               />
+              <input
+  type="range"
+  min={1}
+  max={3}
+  step={0.01}
+  value={zoom}
+  onChange={(e) => setZoom(Number(e.target.value))}
+  className="w-full mt-3"
+/>
+
             </div>
           )}
 
