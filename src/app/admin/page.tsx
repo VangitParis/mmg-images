@@ -7,6 +7,8 @@ import getCroppedImg from "@/utils/getCroppedImg";
 import convertToPNG, { detectFormat } from "@/utils/convertToPNG";
 import type { Work } from "@/types/work";
 import { DEFAULT_PRICES } from "@/utils/getDefaultPrices";
+import { downscaleToWebp } from "@/utils/downscaleToWebp";
+
 
 /* ─────────────────────────────
    Thème “signature” (ambré doux)
@@ -310,7 +312,7 @@ const submit = async (e: React.FormEvent) => {
 
       if (file.size > MAX_CLOUDINARY_BYTES) {
         const msg =
-          "❌ L'image JXL est trop lourde pour la conversion automatique (limite 10 Mo). " +
+          "❌ L'image JXL est trop lourde pour la conversion automatique (limite 10 Mo Cloudinary). " +
           "Merci de l'exporter en JPEG ou WebP depuis votre logiciel avant l'upload.";
         setStatus(msg);
         setFormError(msg);
@@ -337,7 +339,6 @@ const submit = async (e: React.FormEvent) => {
           serverError = errJson?.error || "";
         }
 
-        // Cas 413 prod (payload trop gros sur Vercel)
         if (convRes.status === 413) {
           const msg =
             "❌ L'image est trop lourde pour être traitée par le serveur (erreur 413). " +
@@ -389,6 +390,28 @@ const submit = async (e: React.FormEvent) => {
         uploadFile.name.replace(/\.[^/.]+$/, ".webp"),
         { type: "image/webp" }
       );
+    }
+
+    // 3️⃣ bis — Optimisation automatique si > 4 Mo (limite Vercel)
+    const MAX_VERCEL_BYTES = 4 * 1024 * 1024; // ~4 Mo
+    if (uploadFile.size > MAX_VERCEL_BYTES) {
+      console.log(
+        "📉 Image trop lourde pour Vercel, optimisation côté client…",
+        uploadFile.size
+      );
+
+      const USE_ULTRA_HQ = true;
+
+      uploadFile = await downscaleToWebp(uploadFile, {
+        maxSide: USE_ULTRA_HQ ? 3200 : 2500,
+        quality: USE_ULTRA_HQ ? 0.92 : 0.85,
+      });
+
+      console.log("✅ Après optimisation:", {
+        name: uploadFile.name,
+        type: uploadFile.type,
+        size: uploadFile.size,
+      });
     }
 
     console.log("DEBUG FICHIER ENVOYÉ À /api/upload:", {
@@ -461,8 +484,6 @@ const submit = async (e: React.FormEvent) => {
     setFormError(msg);
   }
 };
-
-
 
 
   const remove = async (id: string) => {
