@@ -56,7 +56,7 @@ export async function POST(req: Request) {
       access: "public",
       contentType: "image/webp",
       addRandomSuffix: true,   // ✅ OBLIGATOIRE POUR SAFARI
-      allowOverwrite: false,
+      allowOverwrite: true,
     });
 
     // ✅ Parsing prix
