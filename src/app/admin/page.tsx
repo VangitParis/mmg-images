@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import Cropper from "react-easy-crop";
 import getCroppedImg from "@/utils/getCroppedImg";
 import convertToPNG, { detectFormat } from "@/utils/convertToPNG";
-import { downscaleToWebp } from "@/utils/downscaleToWebp";
+import { optimizeIfTooLarge } from "@/utils/optimizeIfTooLarge";
 import type { Work } from "@/types/work";
 import { DEFAULT_PRICES } from "@/utils/getDefaultPrices";
 
@@ -264,229 +264,94 @@ function WorksAdmin() {
     }
   };
 
-  const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
   // ─────────────────────────────
   // Submit (conversion + crop + optimisation > 3 Mo)
   // ─────────────────────────────
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError("");
-    setStatus("");
 
-    if (!form.title || !form.alt || !file) {
-      setFormError("⚠️ Titre, Alt et Image sont requis.");
-      return;
+
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+const submit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setStatus("");
+  setFormError("");
+
+  if (!form.title || !form.alt || !file) {
+    setFormError("⚠️ Champs obligatoires manquants.");
+    return;
+  }
+
+  const categoryToSave =
+    form.category === "__new__" ? newCategory.trim() : form.category;
+
+  try {
+    let uploadFile = file;
+
+    const MAX_CLIENT_SIZE = 4 * 1024 * 1024; // 4 Mo
+
+    // ✅ COMPRESSION CLIENT SI > 4 MO
+    if (file.size > MAX_CLIENT_SIZE) {
+      setStatus("📦 Optimisation de l’image…");
+
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      await new Promise((res) => (img.onload = res));
+
+      const canvas = document.createElement("canvas");
+      const scale = 2000 / img.width;
+      canvas.width = 2000;
+      canvas.height = img.height * scale;
+
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      const blob = await new Promise<Blob>((resolve) =>
+        canvas.toBlob((b) => resolve(b!), "image/webp", 0.8)
+      );
+
+      uploadFile = new File([blob], file.name.replace(/\..+$/, ".webp"), {
+        type: "image/webp",
+      });
     }
 
-    const categoryToSave =
-      form.category === "__new__" && newCategory.trim()
-        ? newCategory.trim()
-        : form.category;
+    setStatus("⏳ Envoi vers le serveur…");
 
-    if (!categoryToSave) {
-      setFormError("⚠️ La catégorie est requise.");
-      return;
-    }
+    const pricesField = [
+      form.format1 && form.price1
+        ? `${form.format1} - ${Number(form.price1) * 100}`
+        : null,
+      form.format2 && form.price2
+        ? `${form.format2} - ${Number(form.price2) * 100}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
 
-    setStatus("⏳ Téléversement en cours...");
+    const fd = new FormData();
+    fd.append("file", uploadFile);
+    fd.append("title", form.title);
+    fd.append("location", form.location);
+    fd.append("category", categoryToSave);
+    fd.append("prices", pricesField);
+    fd.append("alt", form.alt);
+    fd.append("story", form.story);
 
-    try {
-      let uploadFile: File = file;
+    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    const result = await res.json();
 
-      // 🔍 Format détecté + extension
-      const detectedFormat = await detectFormat(file);
-      const ext = file.name.split(".").pop()?.toLowerCase();
-      const MAX_CLOUDINARY_BYTES = 10 * 1024 * 1024; // 10 Mo (Cloudinary)
+    if (!result.success) throw new Error(result.error);
 
-      console.log("DEBUG FICHIER ORIGINAL:", {
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        detectedFormat,
-        ext,
-      });
+    setStatus("✅ Image envoyée !");
+    fetchWorks();
+  } catch (err: any) {
+    console.error(err);
+    setFormError(err.message);
+    setStatus("❌ Échec");
+  }
+};
 
-      // 1️⃣ Cas JXL → /api/convert (Cloudinary)
-      if (detectedFormat === "image/jxl" || ext === "jxl") {
-        console.log("🔥 JXL détecté, tentative de conversion via /api/convert ...");
 
-        if (file.size > MAX_CLOUDINARY_BYTES) {
-          const msg =
-            "❌ L'image JXL est trop lourde pour la conversion automatique (limite 10 Mo Cloudinary). " +
-            "Merci de l'exporter en JPEG ou WebP depuis votre logiciel avant l'upload.";
-          setStatus(msg);
-          setFormError(msg);
-          return;
-        }
-
-        setStatus("⏳ Conversion de l'image JXL…");
-
-        const convFd = new FormData();
-        convFd.append("file", file);
-
-        const convRes = await fetch("/api/convert", {
-          method: "POST",
-          body: convFd,
-        });
-
-        const contentType = convRes.headers.get("content-type") || "";
-        console.log("DEBUG /api/convert status:", convRes.status, contentType);
-
-        if (!convRes.ok) {
-          let serverError = "";
-          if (contentType.includes("application/json")) {
-            const errJson = await convRes.json().catch(() => null);
-            serverError = errJson?.error || "";
-          }
-
-          if (convRes.status === 413) {
-            const msg =
-              "❌ L'image est trop lourde pour être traitée par le serveur (erreur 413). " +
-              "Merci de l'exporter en JPEG/WebP avant l'upload.";
-            setStatus(msg);
-            setFormError(msg);
-            throw new Error(msg);
-          }
-
-          const msg =
-            serverError ||
-            "Erreur lors de la conversion JXL → WebP (Cloudinary ou serveur).";
-          setStatus(msg);
-          setFormError(msg);
-          throw new Error(msg);
-        }
-
-        const convBlob = await convRes.blob();
-        uploadFile = new File(
-          [convBlob],
-          file.name.replace(/\.[^/.]+$/, ".webp"),
-          { type: "image/webp" }
-        );
-
-        console.log("✅ JXL converti → WebP côté client", {
-          name: uploadFile.name,
-          type: uploadFile.type,
-          size: uploadFile.size,
-        });
-
-        setStatus("⏳ Conversion terminée, envoi au serveur…");
-      }
-      // 2️⃣ Autres formats non standard → PNG côté client
-      else if (!ALLOWED_TYPES.includes(file.type)) {
-        console.log("📲 Format non standard, conversion en PNG …", file.type);
-        setStatus("⏳ Conversion de l'image en PNG…");
-        uploadFile = await convertToPNG(file);
-      }
-
-      // 3️⃣ Recadrage éventuel (si preview)
-      if (preview && croppedPixels) {
-        const blob = await getCroppedImg(preview, croppedPixels, 2000);
-        if (!blob || blob.size === 0) {
-          throw new Error("Image vide après recadrage");
-        }
-
-        uploadFile = new File(
-          [blob],
-          uploadFile.name.replace(/\.[^/.]+$/, ".webp"),
-          { type: "image/webp" }
-        );
-      }
-
-      // 3️⃣ bis — Optimisation automatique si > ~3 Mo (limite Vercel + marge)
-      const MAX_VERCEL_BYTES = 3 * 1024 * 1024; // ~3 Mo
-      if (uploadFile.size > MAX_VERCEL_BYTES) {
-        console.log(
-          "📉 Image trop lourde pour Vercel, optimisation côté client…",
-          uploadFile.size
-        );
-
-        const USE_ULTRA_HQ = true;
-
-        uploadFile = await downscaleToWebp(uploadFile, {
-          maxSide: USE_ULTRA_HQ ? 3200 : 2500,
-          quality: USE_ULTRA_HQ ? 0.92 : 0.85,
-        });
-
-        console.log("✅ Après optimisation:", {
-          name: uploadFile.name,
-          type: uploadFile.type,
-          size: uploadFile.size,
-        });
-
-        setStatus("✨ Image optimisée automatiquement avant l’envoi.");
-      }
-
-      console.log("DEBUG FICHIER ENVOYÉ À /api/upload:", {
-        name: uploadFile.name,
-        type: uploadFile.type,
-        size: uploadFile.size,
-      });
-
-      // 4️⃣ Formats & prix
-      const pricesField = [
-        form.format1 && form.price1
-          ? `${form.format1} - ${Number(form.price1) * 100}`
-          : null,
-        form.format2 && form.price2
-          ? `${form.format2} - ${Number(form.price2) * 100}`
-          : null,
-      ]
-        .filter(Boolean)
-        .join("\n");
-
-      // 5️⃣ Envoi final vers /api/upload
-      setStatus("⏳ Envoi au serveur…");
-
-      const fd = new FormData();
-      fd.append("file", uploadFile);
-      fd.append("title", form.title);
-      fd.append("location", form.location);
-      fd.append("category", categoryToSave);
-      fd.append("prices", pricesField);
-      fd.append("alt", form.alt);
-      fd.append("story", form.story);
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: fd,
-      });
-
-      const result = await res.json().catch(() => null);
-
-      if (!res.ok || !result?.success) {
-        console.error("Erreur upload (serveur):", result?.error);
-        const msg = result?.error || "Upload KO (erreur serveur).";
-        setStatus(msg);
-        setFormError(msg);
-        throw new Error(msg);
-      }
-
-      setStatus("✅ Ajouté avec succès !");
-      setForm({
-        title: "",
-        location: "",
-        category: "",
-        prices: "",
-        alt: "",
-        story: "",
-        format1: "",
-        price1: "",
-        format2: "",
-        price2: "",
-      });
-      setFile(null);
-      setPreview(null);
-      setZoom(1);
-      setNewCategory("");
-      fetchWorks();
-    } catch (err: any) {
-      console.error("Erreur d’envoi:", err?.message || err);
-      const msg = err?.message || "❌ Erreur d’envoi.";
-      setStatus(msg);
-      setFormError(msg);
-    }
-  };
 
   const remove = async (id: string) => {
     if (!confirm("Supprimer cette œuvre ?")) return;
