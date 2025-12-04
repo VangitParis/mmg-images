@@ -310,7 +310,7 @@ const submit = async (e: React.FormEvent) => {
 
       if (file.size > MAX_CLOUDINARY_BYTES) {
         const msg =
-          "❌ L'image JXL est trop lourde pour la conversion automatique (limite 10 Mo Cloudinary). " +
+          "❌ L'image JXL est trop lourde pour la conversion automatique (limite 10 Mo). " +
           "Merci de l'exporter en JPEG ou WebP depuis votre logiciel avant l'upload.";
         setStatus(msg);
         setFormError(msg);
