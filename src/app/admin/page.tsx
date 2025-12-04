@@ -2,10 +2,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { upload } from "@vercel/blob/client";
 import Cropper from "react-easy-crop";
 import getCroppedImg from "@/utils/getCroppedImg";
 import convertToPNG, { detectFormat } from "@/utils/convertToPNG";
-import { upload } from "@vercel/blob/client";
 import type { Work } from "@/types/work";
 import { DEFAULT_PRICES } from "@/utils/getDefaultPrices";
 
