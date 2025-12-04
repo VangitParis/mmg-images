@@ -6,6 +6,7 @@ import Cropper from "react-easy-crop";
 import getCroppedImg from "@/utils/getCroppedImg";
 import convertToPNG, { detectFormat } from "@/utils/convertToPNG";
 import { optimizeIfTooLarge } from "@/utils/optimizeIfTooLarge";
+import { preCompressForSafari } from "@/utils/preCompressForSafari";
 import type { Work } from "@/types/work";
 import { DEFAULT_PRICES } from "@/utils/getDefaultPrices";
 
@@ -336,6 +337,12 @@ const submit = async (e: React.FormEvent) => {
     fd.append("prices", pricesField);
     fd.append("alt", form.alt);
     fd.append("story", form.story);
+    
+    // ✅ SAFARI SAFE PRE-COMPRESSION
+if (/iphone|ipad|safari/i.test(navigator.userAgent)) {
+  setStatus("📱 Optimisation Safari...");
+  uploadFile = await preCompressForSafari(uploadFile);
+}
 
     const res = await fetch("/api/upload", { method: "POST", body: fd });
     const result = await res.json();

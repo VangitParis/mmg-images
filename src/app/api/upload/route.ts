@@ -157,7 +157,10 @@ export async function POST(req: Request) {
     const file = formData.get("file") as File | null;
 
     if (!file) {
-      return NextResponse.json({ success: false, error: "Aucun fichier" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "Aucun fichier" },
+        { status: 400 }
+      );
     }
 
     const title = String(formData.get("title") || "");
@@ -167,11 +170,29 @@ export async function POST(req: Request) {
     const alt = String(formData.get("alt") || "");
     const story = String(formData.get("story") || "");
 
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const inputBuffer = Buffer.from(await file.arrayBuffer());
 
-    // ✅ COMPRESSION + REDIMENSIONNEMENT AUTOMATIQUE
-    const processed = await sharp(buffer)
-      .resize(2000, null, { fit: "inside", withoutEnlargement: true })
+    /* ✅ WATERMARK SVG */
+    const watermarkSvg = `
+      <svg width="800" height="200" xmlns="http://www.w3.org/2000/svg">
+        <style>
+          text { font-family: Arial, sans-serif; }
+        </style>
+        <text x="50%" y="50%" text-anchor="middle" fill="white"
+          font-size="48" opacity="0.25" transform="rotate(-10, 400, 100)">
+          MMG Images
+        </text>
+      </svg>
+    `;
+    const watermark = Buffer.from(watermarkSvg);
+
+    /* ✅ OPTIMISATION + WATERMARK FINAL WEBP */
+    const processed = await sharp(inputBuffer)
+      .resize(2000, null, {
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .composite([{ input: watermark, gravity: "center" }])
       .webp({ quality: 78, effort: 5 })
       .toBuffer();
 
@@ -184,6 +205,7 @@ export async function POST(req: Request) {
 
     const fileName = `${Date.now()}-${safeTitle || "image"}.webp`;
 
+    /* ✅ UPLOAD VERCEL BLOB */
     const blob = await put(fileName, processed, {
       access: "public",
       contentType: "image/webp",
@@ -196,7 +218,10 @@ export async function POST(req: Request) {
         .filter((l) => l.includes("-"))
         .map((l) => {
           const [label, amount] = l.split("-");
-          return { label: label.trim(), amount: Number(amount.trim()) };
+          return {
+            label: label.trim(),
+            amount: Number(amount.trim()),
+          };
         }) || [];
 
     const newWork = {
@@ -213,7 +238,10 @@ export async function POST(req: Request) {
 
     await kv.lpush("works", JSON.stringify(newWork));
 
-    return NextResponse.json({ success: true, work: newWork });
+    return NextResponse.json({
+      success: true,
+      work: newWork,
+    });
   } catch (err: any) {
     console.error("UPLOAD ERROR:", err);
     return NextResponse.json(
