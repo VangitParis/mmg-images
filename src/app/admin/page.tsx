@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 import Cropper from "react-easy-crop";
 import getCroppedImg from "@/utils/getCroppedImg";
 import convertToPNG, { detectFormat } from "@/utils/convertToPNG";
+import { downscaleToWebp } from "@/utils/downscaleToWebp";
 import type { Work } from "@/types/work";
 import { DEFAULT_PRICES } from "@/utils/getDefaultPrices";
-import { downscaleToWebp } from "@/utils/downscaleToWebp";
+
 
 
 /* ─────────────────────────────
@@ -231,260 +232,261 @@ function WorksAdmin() {
     })();
   }, [form.category]);
 
-// Fonction onFile mise à jour pour accepter JXL sans conversion côté client
+  // ─────────────────────────────
+  // Upload fichier (JXL compris)
+  // ─────────────────────────────
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
 
-const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  const f = e.target.files?.[0];
-  if (!f) return;
+    setStatus("⏳ Chargement de l'image...");
+    setFormError("");
 
-  setStatus("⏳ Chargement de l'image...");
-  setFormError("");
+    try {
+      const format = await detectFormat(f);
+      console.log(`📸 Format détecté : ${format} | MIME : ${f.type}`);
 
-  try {
-    // 🔍 Détection rapide du format
-    const format = await detectFormat(f);
-    console.log(`📸 Format détecté : ${format} | MIME : ${f.type}`);
-
-    // ✅ JXL détecté → Message d'info, pas de conversion côté client
-    if (format === "image/jxl") {
-      setStatus("🎨 Image JXL détectée - Sera convertie lors de l'upload");
-      setFile(f);
-      // Pas de preview pour JXL (navigateur ne peut pas l'afficher)
-      setPreview(null);
-      return;
-    }
-
-    // 🖼️ Formats standards → Preview normal
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
-    setStatus("");
-    
-  } catch (err) {
-    console.error("Erreur :", err);
-    setFormError("❌ Erreur lors du chargement.");
-    setStatus("");
-  }
-};
-
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
-
-const submit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setFormError("");
-  setStatus("");
-
-  if (!form.title || !form.alt || !file) {
-    setFormError("⚠️ Titre, Alt et Image sont requis.");
-    return;
-  }
-
-  const categoryToSave =
-    form.category === "__new__" && newCategory.trim()
-      ? newCategory.trim()
-      : form.category;
-
-  if (!categoryToSave) {
-    setFormError("⚠️ La catégorie est requise.");
-    return;
-  }
-
-  setStatus("⏳ Téléversement en cours...");
-
-  try {
-    let uploadFile: File = file;
-
-    // 🔍 Format détecté + extension
-    const detectedFormat = await detectFormat(file);
-    const ext = file.name.split(".").pop()?.toLowerCase();
-    const MAX_CLOUDINARY_BYTES = 10 * 1024 * 1024; // 10 Mo
-
-    console.log("DEBUG FICHIER ORIGINAL:", {
-      name: file.name,
-      type: file.type,
-      size: file.size,
-      detectedFormat,
-      ext,
-    });
-
-    // 1️⃣ Cas JXL → /api/convert (Cloudinary)
-    if (detectedFormat === "image/jxl" || ext === "jxl") {
-      console.log("🔥 JXL détecté, tentative de conversion via /api/convert ...");
-
-      if (file.size > MAX_CLOUDINARY_BYTES) {
-        const msg =
-          "❌ L'image JXL est trop lourde pour la conversion automatique (limite 10 Mo Cloudinary). " +
-          "Merci de l'exporter en JPEG ou WebP depuis votre logiciel avant l'upload.";
-        setStatus(msg);
-        setFormError(msg);
+      if (format === "image/jxl") {
+        // Navigateur ne peut pas le prévisualiser
+        setStatus("🎨 Image JXL détectée - sera convertie à l'upload.");
+        setFile(f);
+        setPreview(null);
         return;
       }
 
-      setStatus("⏳ Conversion de l'image JXL…");
+      setFile(f);
+      setPreview(URL.createObjectURL(f));
+      setStatus("");
+    } catch (err) {
+      console.error("Erreur onFile :", err);
+      setFormError("❌ Erreur lors du chargement de l'image.");
+      setStatus("");
+    }
+  };
 
-      const convFd = new FormData();
-      convFd.append("file", file);
+  const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
-      const convRes = await fetch("/api/convert", {
-        method: "POST",
-        body: convFd,
+  // ─────────────────────────────
+  // Submit (conversion + crop + optimisation > 3 Mo)
+  // ─────────────────────────────
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError("");
+    setStatus("");
+
+    if (!form.title || !form.alt || !file) {
+      setFormError("⚠️ Titre, Alt et Image sont requis.");
+      return;
+    }
+
+    const categoryToSave =
+      form.category === "__new__" && newCategory.trim()
+        ? newCategory.trim()
+        : form.category;
+
+    if (!categoryToSave) {
+      setFormError("⚠️ La catégorie est requise.");
+      return;
+    }
+
+    setStatus("⏳ Téléversement en cours...");
+
+    try {
+      let uploadFile: File = file;
+
+      // 🔍 Format détecté + extension
+      const detectedFormat = await detectFormat(file);
+      const ext = file.name.split(".").pop()?.toLowerCase();
+      const MAX_CLOUDINARY_BYTES = 10 * 1024 * 1024; // 10 Mo (Cloudinary)
+
+      console.log("DEBUG FICHIER ORIGINAL:", {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        detectedFormat,
+        ext,
       });
 
-      const contentType = convRes.headers.get("content-type") || "";
-      console.log("DEBUG /api/convert status:", convRes.status, contentType);
+      // 1️⃣ Cas JXL → /api/convert (Cloudinary)
+      if (detectedFormat === "image/jxl" || ext === "jxl") {
+        console.log("🔥 JXL détecté, tentative de conversion via /api/convert ...");
 
-      if (!convRes.ok) {
-        let serverError = "";
-        if (contentType.includes("application/json")) {
-          const errJson = await convRes.json().catch(() => null);
-          serverError = errJson?.error || "";
+        if (file.size > MAX_CLOUDINARY_BYTES) {
+          const msg =
+            "❌ L'image JXL est trop lourde pour la conversion automatique (limite 10 Mo Cloudinary). " +
+            "Merci de l'exporter en JPEG ou WebP depuis votre logiciel avant l'upload.";
+          setStatus(msg);
+          setFormError(msg);
+          return;
         }
 
-        if (convRes.status === 413) {
+        setStatus("⏳ Conversion de l'image JXL…");
+
+        const convFd = new FormData();
+        convFd.append("file", file);
+
+        const convRes = await fetch("/api/convert", {
+          method: "POST",
+          body: convFd,
+        });
+
+        const contentType = convRes.headers.get("content-type") || "";
+        console.log("DEBUG /api/convert status:", convRes.status, contentType);
+
+        if (!convRes.ok) {
+          let serverError = "";
+          if (contentType.includes("application/json")) {
+            const errJson = await convRes.json().catch(() => null);
+            serverError = errJson?.error || "";
+          }
+
+          if (convRes.status === 413) {
+            const msg =
+              "❌ L'image est trop lourde pour être traitée par le serveur (erreur 413). " +
+              "Merci de l'exporter en JPEG/WebP avant l'upload.";
+            setStatus(msg);
+            setFormError(msg);
+            throw new Error(msg);
+          }
+
           const msg =
-            "❌ L'image est trop lourde pour être traitée par le serveur (erreur 413). " +
-            "Merci de l'exporter en JPEG/WebP avant l'upload.";
+            serverError ||
+            "Erreur lors de la conversion JXL → WebP (Cloudinary ou serveur).";
           setStatus(msg);
           setFormError(msg);
           throw new Error(msg);
         }
 
-        const msg =
-          serverError ||
-          "Erreur lors de la conversion JXL → WebP (Cloudinary ou serveur).";
+        const convBlob = await convRes.blob();
+        uploadFile = new File(
+          [convBlob],
+          file.name.replace(/\.[^/.]+$/, ".webp"),
+          { type: "image/webp" }
+        );
+
+        console.log("✅ JXL converti → WebP côté client", {
+          name: uploadFile.name,
+          type: uploadFile.type,
+          size: uploadFile.size,
+        });
+
+        setStatus("⏳ Conversion terminée, envoi au serveur…");
+      }
+      // 2️⃣ Autres formats non standard → PNG côté client
+      else if (!ALLOWED_TYPES.includes(file.type)) {
+        console.log("📲 Format non standard, conversion en PNG …", file.type);
+        setStatus("⏳ Conversion de l'image en PNG…");
+        uploadFile = await convertToPNG(file);
+      }
+
+      // 3️⃣ Recadrage éventuel (si preview)
+      if (preview && croppedPixels) {
+        const blob = await getCroppedImg(preview, croppedPixels, 2000);
+        if (!blob || blob.size === 0) {
+          throw new Error("Image vide après recadrage");
+        }
+
+        uploadFile = new File(
+          [blob],
+          uploadFile.name.replace(/\.[^/.]+$/, ".webp"),
+          { type: "image/webp" }
+        );
+      }
+
+      // 3️⃣ bis — Optimisation automatique si > ~3 Mo (limite Vercel + marge)
+      const MAX_VERCEL_BYTES = 3 * 1024 * 1024; // ~3 Mo
+      if (uploadFile.size > MAX_VERCEL_BYTES) {
+        console.log(
+          "📉 Image trop lourde pour Vercel, optimisation côté client…",
+          uploadFile.size
+        );
+
+        const USE_ULTRA_HQ = true;
+
+        uploadFile = await downscaleToWebp(uploadFile, {
+          maxSide: USE_ULTRA_HQ ? 3200 : 2500,
+          quality: USE_ULTRA_HQ ? 0.92 : 0.85,
+        });
+
+        console.log("✅ Après optimisation:", {
+          name: uploadFile.name,
+          type: uploadFile.type,
+          size: uploadFile.size,
+        });
+
+        setStatus("✨ Image optimisée automatiquement avant l’envoi.");
+      }
+
+      console.log("DEBUG FICHIER ENVOYÉ À /api/upload:", {
+        name: uploadFile.name,
+        type: uploadFile.type,
+        size: uploadFile.size,
+      });
+
+      // 4️⃣ Formats & prix
+      const pricesField = [
+        form.format1 && form.price1
+          ? `${form.format1} - ${Number(form.price1) * 100}`
+          : null,
+        form.format2 && form.price2
+          ? `${form.format2} - ${Number(form.price2) * 100}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      // 5️⃣ Envoi final vers /api/upload
+      setStatus("⏳ Envoi au serveur…");
+
+      const fd = new FormData();
+      fd.append("file", uploadFile);
+      fd.append("title", form.title);
+      fd.append("location", form.location);
+      fd.append("category", categoryToSave);
+      fd.append("prices", pricesField);
+      fd.append("alt", form.alt);
+      fd.append("story", form.story);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: fd,
+      });
+
+      const result = await res.json().catch(() => null);
+
+      if (!res.ok || !result?.success) {
+        console.error("Erreur upload (serveur):", result?.error);
+        const msg = result?.error || "Upload KO (erreur serveur).";
         setStatus(msg);
         setFormError(msg);
         throw new Error(msg);
       }
 
-      const convBlob = await convRes.blob();
-      uploadFile = new File(
-        [convBlob],
-        file.name.replace(/\.[^/.]+$/, ".webp"),
-        { type: "image/webp" }
-      );
-
-      console.log("✅ JXL converti → WebP côté client", {
-        name: uploadFile.name,
-        type: uploadFile.type,
-        size: uploadFile.size,
+      setStatus("✅ Ajouté avec succès !");
+      setForm({
+        title: "",
+        location: "",
+        category: "",
+        prices: "",
+        alt: "",
+        story: "",
+        format1: "",
+        price1: "",
+        format2: "",
+        price2: "",
       });
-
-      setStatus("⏳ Conversion terminée, envoi au serveur…");
-    }
-    // 2️⃣ Autres formats non standard → PNG côté client
-    else if (!ALLOWED_TYPES.includes(file.type)) {
-      console.log("📲 Format non standard, conversion en PNG …", file.type);
-      setStatus("⏳ Conversion de l'image en PNG…");
-      uploadFile = await convertToPNG(file);
-    }
-
-    // 3️⃣ Recadrage éventuel
-    if (preview && croppedPixels) {
-      const blob = await getCroppedImg(preview, croppedPixels, 2000);
-      if (!blob || blob.size === 0) {
-        throw new Error("Image vide après recadrage");
-      }
-
-      uploadFile = new File(
-        [blob],
-        uploadFile.name.replace(/\.[^/.]+$/, ".webp"),
-        { type: "image/webp" }
-      );
-    }
-
-    // 3️⃣ bis — Optimisation automatique si > 4 Mo (limite Vercel)
-    const MAX_VERCEL_BYTES = 4 * 1024 * 1024; // ~4 Mo
-    if (uploadFile.size > MAX_VERCEL_BYTES) {
-      console.log(
-        "📉 Image trop lourde pour Vercel, optimisation côté client…",
-        uploadFile.size
-      );
-
-      const USE_ULTRA_HQ = true;
-
-      uploadFile = await downscaleToWebp(uploadFile, {
-        maxSide: USE_ULTRA_HQ ? 3200 : 2500,
-        quality: USE_ULTRA_HQ ? 0.92 : 0.85,
-      });
-
-      console.log("✅ Après optimisation:", {
-        name: uploadFile.name,
-        type: uploadFile.type,
-        size: uploadFile.size,
-      });
-    }
-
-    console.log("DEBUG FICHIER ENVOYÉ À /api/upload:", {
-      name: uploadFile.name,
-      type: uploadFile.type,
-      size: uploadFile.size,
-    });
-
-    // 4️⃣ Formats & prix
-    const pricesField = [
-      form.format1 && form.price1
-        ? `${form.format1} - ${Number(form.price1) * 100}`
-        : null,
-      form.format2 && form.price2
-        ? `${form.format2} - ${Number(form.price2) * 100}`
-        : null,
-    ]
-      .filter(Boolean)
-      .join("\n");
-
-    // 5️⃣ Envoi final vers /api/upload
-    setStatus("⏳ Envoi au serveur…");
-
-    const fd = new FormData();
-    fd.append("file", uploadFile);
-    fd.append("title", form.title);
-    fd.append("location", form.location);
-    fd.append("category", categoryToSave);
-    fd.append("prices", pricesField);
-    fd.append("alt", form.alt);
-    fd.append("story", form.story);
-
-    const res = await fetch("/api/upload", {
-      method: "POST",
-      body: fd,
-    });
-
-    const result = await res.json().catch(() => null);
-
-    if (!res.ok || !result?.success) {
-      console.error("Erreur upload (serveur):", result?.error);
-      const msg = result?.error || "Upload KO (erreur serveur).";
+      setFile(null);
+      setPreview(null);
+      setZoom(1);
+      setNewCategory("");
+      fetchWorks();
+    } catch (err: any) {
+      console.error("Erreur d’envoi:", err?.message || err);
+      const msg = err?.message || "❌ Erreur d’envoi.";
       setStatus(msg);
       setFormError(msg);
-      throw new Error(msg);
     }
-
-    setStatus("✅ Ajouté avec succès !");
-    setForm({
-      title: "",
-      location: "",
-      category: "",
-      prices: "",
-      alt: "",
-      story: "",
-      format1: "",
-      price1: "",
-      format2: "",
-      price2: "",
-    });
-    setFile(null);
-    setPreview(null);
-    setZoom(1);
-    setNewCategory("");
-    fetchWorks();
-  } catch (err: any) {
-    console.error("Erreur d’envoi:", err?.message || err);
-    const msg = err?.message || "❌ Erreur d’envoi.";
-    setStatus(msg);
-    setFormError(msg);
-  }
-};
-
+  };
 
   const remove = async (id: string) => {
     if (!confirm("Supprimer cette œuvre ?")) return;
@@ -590,83 +592,75 @@ const submit = async (e: React.FormEvent) => {
                 ? "Image sélectionnée ✅"
                 : "📷 Choisir une image ou prendre une photo"}
             </span>
-           <input
-  type="file"
-  accept="image/*,.jxl"
-  className="hidden"
-  onChange={onFile}
-/>
-
+            <input
+              type="file"
+              accept="image/*,.jxl"
+              className="hidden"
+              onChange={onFile}
+            />
           </label>
 
-          {/* 🔽 Sélection du ratio */}
-<div className="flex flex-wrap gap-2 text-xs text-neutral-300 mb-2">
-  <span className="text-neutral-500 mr-2">Format :</span>
+          {/* Choix des ratios */}
+          <div className="flex flex-wrap gap-2 text-xs text-neutral-300 mb-2">
+            <span className="text-neutral-500 mr-2">Format :</span>
 
-  <button
-    type="button"
-    onClick={() => setAspect(4 / 3)}
-    className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
-  >
-    4 / 3
-  </button>
+            <button
+              type="button"
+              onClick={() => setAspect(4 / 3)}
+              className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
+            >
+              4 / 3
+            </button>
+            <button
+              type="button"
+              onClick={() => setAspect(16 / 9)}
+              className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
+            >
+              16 / 9
+            </button>
+            <button
+              type="button"
+              onClick={() => setAspect(16 / 10)}
+              className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
+            >
+              16 / 10
+            </button>
+            <button
+              type="button"
+              onClick={() => setAspect(3 / 4)}
+              className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
+            >
+              3 / 4
+            </button>
+            <button
+              type="button"
+              onClick={() => setAspect(1)}
+              className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
+            >
+              1 / 1
+            </button>
+            <button
+              type="button"
+              onClick={() => setAspect(undefined)}
+              className="px-3 py-1 rounded border border-amber-500 text-amber-300 hover:bg-neutral-900/60"
+            >
+              Libre
+            </button>
+          </div>
 
-  <button
-    type="button"
-    onClick={() => setAspect(16 / 9)}
-    className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
-  >
-    16 / 9
-  </button>
-
-  <button
-    type="button"
-    onClick={() => setAspect(16 / 10)}
-    className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
-  >
-    16 / 10
-  </button>
-
-  <button
-    type="button"
-    onClick={() => setAspect(3 / 4)}
-    className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
-  >
-    3 / 4
-  </button>
-
-  <button
-    type="button"
-    onClick={() => setAspect(1)}
-    className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
-  >
-    1 / 1
-  </button>
-
-  <button
-    type="button"
-    onClick={() => setAspect(undefined)}
-    className="px-3 py-1 rounded border border-amber-500 text-amber-300 hover:bg-neutral-900/60"
-  >
-    Libre
-  </button>
-</div>
-
-{/* 🔽 Cropper */}
-{preview && (
-  <div className="relative w-full h-96 border border-neutral-800 rounded-lg overflow-hidden">
-    <Cropper
-      image={preview}
-      crop={crop}
-      zoom={zoom}
-      aspect={aspect} // ➜ dynamique
-      onCropChange={setCrop}
-      onZoomChange={setZoom}
-      onCropComplete={(_, pixels) => setCroppedPixels(pixels)}
-    />
-  </div>
-)}
-
+          {preview && (
+            <div className="relative w-full h-96 border border-neutral-800 rounded-lg overflow-hidden">
+              <Cropper
+                image={preview}
+                crop={crop}
+                zoom={zoom}
+                aspect={aspect}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={(_, pixels) => setCroppedPixels(pixels)}
+              />
+            </div>
+          )}
 
           <div className="space-y-2">
             <label className="block text-sm text-neutral-400">
@@ -773,6 +767,7 @@ const submit = async (e: React.FormEvent) => {
     </>
   );
 }
+
 
 /* ╭────────────────────────────────────────────────────────╮
    │                         P A G E S                      │
