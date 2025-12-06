@@ -2,8 +2,15 @@
   {
     "slug": "a-propos",
     "title": "À Propos de moi",
-    "image": "/uploads/1764333284692-IMG_0275.webp",
+    "image": "https://uhezn9bpxbufehtr.public.blob.vercel-storage.com/MMG_MARIE-EB1JSEo3KMJ21OtfqKOKWA0bZapSCD.webp",
     "alt": "",
-    "content": "<p>Tapis dans le silence, accroupie entre deux branches, je ne cherche pas seulement une image.\nJe cherche une rencontre.</p>\n\n<p>Ce n’est pas un hasard si je préfère le froid du matin au confort d’un studio :\nje vis la nature comme on vit un secret – avec respect, patience… et un peu de magie.</p>\n\n<p>Mon appareil n’est pas juste un outil. C’est mon passeport vers l’invisible.</p>\n\n<p>À cet instant figé sur la photo, je guette le moindre souffle, la moindre vibration.\nLe cœur silencieux mais l’œil en alerte.\nParce qu’au fond, photographier la nature…\nc’est accepter de disparaître pour mieux la révéler.</p>\n\n<p>Je ne prends pas des photos.\nJe laisse la nature écrire son histoire à travers mon objectif.</p>\n\n<p>Si tu es ici, tu sais peut-être déjà une chose :\nla beauté ne se montre pas, elle se mérite.\nEt moi… je suis prête à l’attendre, encore et encore.</p>"
+    "content": "<p><p>Tapis dans le silence, accroupie entre deux branches, je ne cherche pas seulement une image.\nJe cherche une rencontre.</p></p>\n\n<p><p>Ce n’est pas un hasard si je préfère le froid du matin au confort d’un studio :\nje vis la nature comme on vit un secret – avec respect, patience… et un peu de magie.</p></p>\n\n<p><p>Mon appareil n’est pas juste un outil. C’est mon passeport vers l’invisible.</p></p>\n\n<p><p>À cet instant figé sur la photo, je guette le moindre souffle, la moindre vibration.\nLe cœur silencieux mais l’œil en alerte.\nParce qu’au fond, photographier la nature…\nc’est accepter de disparaître pour mieux la révéler.</p></p>\n\n<p><p>Je ne prends pas des photos.\nJe laisse la nature écrire son histoire à travers mon objectif.</p></p>\n\n<p><p>Si tu es ici, tu sais peut-être déjà une chose :\nla beauté ne se montre pas, elle se mérite.\nEt moi… je suis prête à l’attendre, encore et encore.</p></p>"
+  },
+  {
+    "slug": "renards-balade",
+    "title": "Balade avec les renards en hiver",
+    "image": "https://uhezn9bpxbufehtr.public.blob.vercel-storage.com/RENARDE-70mb4wwBE8mjIIALMoiKgD7KKdEJz8.webp",
+    "alt": "renards et moi",
+    "content": "<p>Quare talis improborum consensio non modo excusatione amicitiae tegenda non est sed potius supplicio omni vindicanda est, ut ne quis concessum putet amicum vel bellum patriae inferentem sequi; quod quidem, ut res ire coepit, haud scio an aliquando futurum sit. Mihi autem non minori curae est, qualis res publica post mortem meam futura, quam qualis hodie sit.</p>\n\n<p>Ipsam vero urbem Byzantiorum fuisse refertissimam atque ornatissimam signis quis ignorat? Quae illi, exhausti sumptibus bellisque maximis, cum omnis Mithridaticos impetus totumque Pontum armatum affervescentem in Asiam atque erumpentem, ore repulsum et cervicibus interclusum suis sustinerent, tum, inquam, Byzantii et postea signa illa et reliqua urbis ornanemta sanctissime custodita tenuerunt.</p>\n\n<p>Excitavit hic ardor milites per municipia plurima, quae isdem conterminant, dispositos et castella, sed quisque serpentes latius pro viribus repellere moliens, nunc globis confertos, aliquotiens et dispersos multitudine superabatur ingenti, quae nata et educata inter editos recurvosque ambitus montium eos ut loca plana persultat et mollia, missilibus obvios eminus lacessens et ululatu truci perterrens.</p>"
   }
 ]

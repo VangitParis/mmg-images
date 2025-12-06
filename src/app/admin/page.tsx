@@ -270,7 +270,6 @@ function WorksAdmin() {
   // ─────────────────────────────
 
 
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 const submit = async (e: React.FormEvent) => {
   e.preventDefault();
@@ -696,8 +695,6 @@ function PagesAdmin() {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedPixels, setCroppedPixels] = useState<any>(null);
-  const [aspect, setAspect] = useState<number | undefined>(4 / 3); // 4/3 par défaut (paysage classique)
-
 
   const load = async () => {
     const res = await fetch("/api/pages", { cache: "no-store" });
@@ -717,44 +714,66 @@ function PagesAdmin() {
     }
   };
 
+  const resetForm = () => {
+    setForm({ slug: "", title: "", image: "", alt: "", content: "" });
+    setFile(null);
+    setPreview(null);
+    setZoom(1);
+    setCroppedPixels(null);
+    setEditing(false);
+    setStatus("");
+  };
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!form.slug.trim() || !form.title.trim()) {
+      setStatus("⚠️ Slug et titre sont obligatoires.");
+      return;
+    }
+
+    // Petit contrôle côté front : slug déjà existant en création
+    if (!editing) {
+      const exists = pages.some((p) => p.slug === form.slug.trim());
+      if (exists) {
+        setStatus("⚠️ Ce slug existe déjà, choisis-en un autre.");
+        return;
+      }
+    }
+
     setStatus(editing ? "⏳ Mise à jour…" : "⏳ Enregistrement…");
 
     try {
       let imageUrl = form.image;
 
-      let uploadFile = file;
-      if (file && preview && croppedPixels) {
-        const blob = await getCroppedImg(preview, croppedPixels, 2000);
-        uploadFile = new File(
-          [blob],
-          file.name.replace(/\.[^/.]+$/, ".webp"),
-          {
-            type: "image/webp",
-          }
-        );
-      }
+      // 1️⃣ Si une image est choisie, on la recadre + convertit en WebP, puis upload via Vercel Blob
+      if (file) {
+        let uploadFile: File = file;
 
-      if (uploadFile) {
-        const fd = new FormData();
-        fd.append("file", uploadFile);
-        const upload = await fetch("/api/uploadPageImage", {
-          method: "POST",
-          body: fd,
+        if (preview && croppedPixels) {
+          const blob = await getCroppedImg(preview, croppedPixels, 2000);
+          uploadFile = new File(
+            [blob],
+            file.name.replace(/\.[^/.]+$/, ".webp"),
+            { type: "image/webp" }
+          );
+        }
+
+        const blobUpload = await upload(uploadFile.name, uploadFile, {
+          access: "public",
+          handleUploadUrl: "/api/blob-upload",
         });
-        const { url } = await upload.json();
-        imageUrl = url;
+
+        imageUrl = blobUpload.url;
       }
 
-     const payload = {
-  slug: form.slug,
-  title: form.title,
-  image: imageUrl,
-  alt: form.alt || "",
-  content: form.content, // ✅ on envoie brut, l'API gère
-};
-
+      const payload = {
+        slug: form.slug.trim(),
+        title: form.title.trim(),
+        image: imageUrl,
+        alt: form.alt || "",
+        content: form.content, // on envoie brut, formaté côté API ou côté front
+      };
 
       const method = editing ? "PUT" : "POST";
       const res = await fetch("/api/pages", {
@@ -766,12 +785,8 @@ function PagesAdmin() {
       if (!res.ok) throw new Error("Erreur serveur");
 
       setStatus(editing ? "✅ Page mise à jour !" : "✅ Page enregistrée !");
-      setForm({ slug: "", title: "", image: "", alt: "", content: "" });
-      setFile(null);
-      setPreview(null);
-      setZoom(1);
-      setEditing(false);
-      load();
+      await load();
+      resetForm();
     } catch (err) {
       console.error(err);
       setStatus("❌ Erreur lors de la sauvegarde.");
@@ -790,31 +805,29 @@ function PagesAdmin() {
     setForm({
       slug: p.slug,
       title: p.title,
-      image: p.image,
+      image: p.image || "",
       alt: p.alt || "",
       content: p.content || "",
     });
     setPreview(p.image || null);
+    setFile(null);
     setEditing(true);
+    setStatus("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const cancelEdit = () => {
-    setEditing(false);
-    setForm({ slug: "", title: "", image: "", alt: "", content: "" });
-    setPreview(null);
-    setFile(null);
-    setStatus("");
+    resetForm();
   };
 
   return (
     <>
-      <h2 className="text-xl font-light mb-2">Pages libres</h2>
+      <h2 className="text-xl font-light mb-2">Pages libres / Articles</h2>
       <p className="text-sm text-amber-300 mb-6">
         “À propos” doit avoir le slug{" "}
         <code className="text-neutral-300">a-propos</code> pour apparaître
-        dans la Navbar. Les autres pages s’affichent automatiquement dans
-        le Footer.
+        dans la Navbar. Les autres pages peuvent servir de pages statiques
+        ou d’articles de blog et s’affichent dans le Footer ou un listing.
       </p>
 
       {/* Formulaire création / édition */}
@@ -826,7 +839,7 @@ function PagesAdmin() {
         <div className="grid sm:grid-cols-2 gap-4">
           <input
             className="p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600"
-            placeholder="Slug (ex: a-propos, mentions-legales)"
+            placeholder="Slug (ex: a-propos, mentions-legales, renards-en-hiver)"
             value={form.slug}
             onChange={(e) =>
               setForm({ ...form, slug: e.target.value })
@@ -835,7 +848,7 @@ function PagesAdmin() {
           />
           <input
             className="p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600"
-            placeholder="Titre de la page"
+            placeholder="Titre de la page / article"
             value={form.title}
             onChange={(e) =>
               setForm({ ...form, title: e.target.value })
@@ -847,7 +860,9 @@ function PagesAdmin() {
           <span className="text-sm text-neutral-400">
             {file
               ? "Image sélectionnée ✅"
-              : "📷 Choisir une image ou prendre une photo"}
+              : preview
+              ? "Image déjà enregistrée – choisir un fichier pour la remplacer"
+              : "📷 Choisir une image de couverture"}
           </span>
           <input
             type="file"
@@ -859,7 +874,7 @@ function PagesAdmin() {
 
         <input
           className="w-full p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600"
-          placeholder="Texte alternatif (SEO) = mots clés"
+          placeholder="Texte alternatif (SEO) = mots clés de la page / article"
           value={form.alt || ""}
           onChange={(e) =>
             setForm({ ...form, alt: e.target.value })
@@ -877,14 +892,23 @@ function PagesAdmin() {
               onZoomChange={setZoom}
               onCropComplete={(_, pixels) => setCroppedPixels(pixels)}
             />
+            <div className="absolute bottom-3 left-0 right-0 px-4">
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.01}
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="w-full"
+              />
+            </div>
           </div>
         )}
 
-        {/* Champ URL supprimé volontairement */}
-
         <textarea
           className="w-full p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600 h-40"
-          placeholder="Contenu (texte brut, chaque bloc séparé par une ligne vide = 1 paragraphe)"
+          placeholder="Contenu (texte brut : ce sera rendu comme un article avec des paragraphes séparés par une ligne vide)"
           value={form.content}
           onChange={(e) =>
             setForm({ ...form, content: e.target.value })
@@ -914,7 +938,9 @@ function PagesAdmin() {
 
       {/* Liste des pages */}
       <div className="border-t border-neutral-800 pt-6">
-        <h3 className="text-xl font-light mb-4">Pages existantes</h3>
+        <h3 className="text-xl font-light mb-4">
+          Pages / Articles existants
+        </h3>
         {pages.length === 0 ? (
           <p className="text-neutral-500 text-sm">Aucune page.</p>
         ) : (
