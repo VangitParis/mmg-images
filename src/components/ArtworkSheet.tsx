@@ -91,6 +91,22 @@ export default function ArtworkSheet({ work, onClose, onBuy }: ArtworkSheetProps
                       </Button>
                     </div>
 
+                    {work.story && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.45 }}
+                        className="mt-5 border border-neutral-800 rounded-xl bg-neutral-900/40 p-4 shadow-inner shadow-black/30"
+                      >
+                        <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500 mb-2">
+                          Histoire de la prise de vue
+                        </p>
+                        <p className="text-sm text-neutral-200 leading-relaxed whitespace-pre-line">
+                          {work.story}
+                        </p>
+                      </motion.div>
+                    )}
+
                     <div className="mt-6 space-y-2">
                       {work.prices && work.prices.length > 0 ? (
                         work.prices.map((p: Price, i) => (
