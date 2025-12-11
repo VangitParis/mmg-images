@@ -5,7 +5,8 @@ export const WORKS = [
     title: "Renard curieux",
     location: "Forêt de Fontainebleau",
     category: "Renards",
-    src: "/images/fox.jpg",
+    // src: "/images/fox.jpg",
+    src: "/images/114A4448.jxl",
     aspect: 3 / 4,
     prices: [
       { label: "Tirage Fine Art 30×40", amount: 25000 },
