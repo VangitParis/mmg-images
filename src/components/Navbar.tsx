@@ -58,15 +58,21 @@ export default function Navbar({ onCart }: NavbarProps) {
       : "bg-gradient-to-b from-neutral-950/75 to-transparent text-white border-transparent"
   }`}
 >
-  <div className="mx-auto max-w-7xl px-4 h-16 flex items-center justify-between backdrop-blur-md">
+  <div className="mx-auto max-w-[clamp(1200px,85vw,1800px)] px-4 lg:px-10 h-19 flex items-center justify-between backdrop-blur-md">
 
     {/* Logo */}
     <a
       href="/"
-      className="text-lg tracking-tight font-medium hover:opacity-80 transition select-none"
+      className="flex items-center gap-2 hover:opacity-95 transition select-none"
+      aria-label="MMG Images"
     >
-      <span className="text-white">MMG</span>
-      <span className="text-amber-400">Images</span>
+      <span className="h-[76px] w-[76px] md:h-[110px] md:w-[110px] rounded-full  flex items-center justify-center ]">
+        <img
+          src="/images/Logo_mmgimages.svg"
+          alt="MMG Images"
+          className="h-[80px] w-[80px] md:h-[120px] md:w-[120px] object-contain drop-shadow-[0_0_10px_rgba(0,0,0,0.55)]"
+        />
+      </span>
     </a>
 
     {/* Desktop nav */}
@@ -76,7 +82,7 @@ export default function Navbar({ onCart }: NavbarProps) {
       </button>
 
       {hasAbout && (
-        <a href="/about" className="hover:text-amber-400 transition">
+        <a href="/a-propos" className="hover:text-amber-400 transition">
           À propos
         </a>
       )}
@@ -113,7 +119,7 @@ export default function Navbar({ onCart }: NavbarProps) {
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: "100%" }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className="fixed inset-0 bg-gradient-to-b from-neutral-950/90 to-black/70 backdrop-blur-md z-40 flex justify-end"
+        className="fixed inset-0 bg-gradient-to-b -950/90 to-black/70 backdrop-blur-md z-40 flex justify-end"
 
         onClick={() => setMenuOpen(false)}
       >

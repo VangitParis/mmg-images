@@ -26,10 +26,22 @@ export default function Footer() {
 
   return (
     <footer className="bg-neutral-950 border-t border-neutral-800 text-neutral-400 py-10 px-6 mt-24">
-      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between gap-10">
+      <div className="max-w-[clamp(1200px,85vw,1800px)] mx-auto flex flex-col sm:flex-row justify-between gap-10 px-2 lg:px-6">
         {/* Bloc gauche — identité */}
         <div>
-          <h3 className="text-lg text-neutral-100 mb-3">MMG Images</h3>
+          <div className="flex items-center gap-3 mb-3">
+            <span className="h-[80px] w-[80px] md:h-[80px] md:w-[70px] rounded-full  backdrop-blur-sm flex items-center justify-center shadow-[0_10px_26px_rgba(0,0,0,0.45)]">
+              <img
+                src="/images/Logo_mmgimages.svg"
+                alt="MMG Images"
+                className="h-[80px] w-[80px] md:h-[78px] md:w-[78px] object-contain drop-shadow-[0_0_6px_rgba(0,0,0,0.5)]"
+              />
+            </span>
+            <h3 className="text-lg text-neutral-100 leading-tight">
+              MMG <span className="text-amber-300">Images</span>
+            </h3>
+            
+          </div>
           <p className="text-sm max-w-xs leading-relaxed">
             Photographies animalières capturées avec patience et lumière naturelle.
           </p>

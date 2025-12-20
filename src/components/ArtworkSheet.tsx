@@ -54,7 +54,7 @@ export default function ArtworkSheet({ work, onClose, onBuy }: ArtworkSheetProps
             transition={{ type: "spring", stiffness: 220, damping: 25 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
           >
-            <div className="relative w-full max-w-[1000px] bg-neutral-950 rounded-2xl overflow-hidden border border-neutral-800 shadow-[0_0_80px_rgba(0,0,0,0.6)]">
+            <div className="relative w-full max-w-[clamp(960px,80vw,1500px)] bg-neutral-950 rounded-2xl overflow-hidden border border-neutral-800 shadow-[0_0_80px_rgba(0,0,0,0.6)]">
               <Card className="overflow-hidden">
                 <div className="grid md:grid-cols-2">
                   {/* 🖼️ Image encadrée */}

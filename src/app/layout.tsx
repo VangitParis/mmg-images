@@ -2,10 +2,6 @@ import "./globals.css";
 import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Inter } from "next/font/google";
-
-const inter = Inter({ subsets: ["latin"] });
-
 export const metadata: Metadata = {
   title: "MMG Images — Galerie Photo Animalière",
   description:
@@ -19,9 +15,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr">
-      <body
-        className={`${inter.className} bg-neutral-950 text-neutral-100 min-h-screen flex flex-col`}
-      >
+      <body className="bg-neutral-950 text-neutral-100 min-h-screen flex flex-col font-sans">
         <Navbar />
         <main className="flex-1">{children}</main>
         <Footer />
