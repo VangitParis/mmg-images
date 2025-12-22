@@ -183,6 +183,17 @@ function WorksAdmin() {
   const [works, setWorks] = useState<Work[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [newCategory, setNewCategory] = useState("");
+  const [deleteStatus, setDeleteStatus] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+
+  const normalizeCategory = (value: string) => {
+    const trimmed = value?.trim();
+    if (!trimmed) return "";
+    const lower = trimmed.toLowerCase();
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
+  };
 
   // Recadrage
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -193,8 +204,16 @@ function WorksAdmin() {
   const fetchWorks = async () => {
     const res = await fetch("/api/works", { cache: "no-store" });
     const data = (await res.json()) as Work[];
-    setWorks(data);
-    const cats = Array.from(new Set(data.map((w) => w.category))).sort();
+    const normalized = data.map((w) => ({
+      ...w,
+      category: normalizeCategory(w.category || ""),
+    }));
+    setWorks(normalized);
+    const cats = Array.from(
+      new Map(
+        normalized.map((w) => [w.category.toLowerCase(), w.category])
+      ).values()
+    ).sort();
     setCategories(
       cats.length ? cats : ["Renards", "Cerfs", "Oiseaux", "Écureuils", "Autres"]
     );
@@ -281,10 +300,11 @@ const submit = async (e: React.FormEvent) => {
     return;
   }
 
-  const categoryToSave =
+  const rawCategory =
     form.category === "__new__" && newCategory.trim()
       ? newCategory.trim()
       : form.category;
+  const categoryToSave = normalizeCategory(rawCategory);
 
   if (!categoryToSave) {
     setFormError("⚠️ La catégorie est requise.");
@@ -384,11 +404,20 @@ const submit = async (e: React.FormEvent) => {
 
 
   const remove = async (id: string) => {
-    if (!confirm("Supprimer cette œuvre ?")) return;
-    const res = await fetch(`/api/delete?id=${id}`, { method: "DELETE" });
-    const data = await res.json();
-    alert(data.success ? "✅ Supprimée" : `❌ ${data.error}`);
-    fetchWorks();
+    setDeleteStatus("");
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/delete?id=${id}`, { method: "DELETE" });
+      const data = await res.json();
+      setDeleteStatus(data.success ? "Œuvre supprimée." : `Erreur : ${data.error}`);
+      fetchWorks();
+    } catch (err: any) {
+      console.error("❌ ERROR DELETE:", err);
+      setDeleteStatus("Erreur lors de la suppression.");
+    } finally {
+      setDeletingId(null);
+      setConfirmId(null);
+    }
   };
 
   return (
@@ -630,43 +659,101 @@ const submit = async (e: React.FormEvent) => {
 
       {/* Liste */}
       <section className="border-t border-neutral-800 pt-8">
-        <h3 className="text-xl font-light mb-4">Œuvres existantes</h3>
+        <h3 className="text-xl md:text-2xl 2xl:text-3xl font-light mb-4">
+          Œuvres existantes
+        </h3>
+        <div className="flex flex-wrap items-center gap-3 mb-6">
+          <label className="text-sm text-neutral-400">Filtrer par catégorie :</label>
+          <select
+            value={filterCategory}
+            onChange={(e) => setFilterCategory(e.target.value)}
+            className="p-2 rounded bg-neutral-900 border border-neutral-800 text-sm md:text-base outline-none focus:border-neutral-600"
+          >
+            <option value="all">Toutes</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {works.length === 0 ? (
           <p className="text-neutral-500 text-sm">
             Aucune œuvre enregistrée.
           </p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {works.map((w) => (
+          <>
+            {deleteStatus && (
+              <p className="text-sm md:text-base 2xl:text-lg text-neutral-300 mb-4">
+                {deleteStatus}
+              </p>
+            )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7 2xl:gap-10">
+            {works
+              .filter((w) =>
+                filterCategory === "all"
+                  ? true
+                  : w.category === filterCategory
+              )
+              .map((w) => (
               <div
                 key={w.id}
                 className="bg-neutral-900/60 border border-neutral-800 rounded-xl overflow-hidden hover:border-neutral-700 transition-colors"
               >
-                <img
-                  src={w.src}
-                  alt={w.alt}
-                  className="w-full h-48 object-cover"
-                />
-                <div className="p-3">
-                  <div className="text-sm text-white">{w.title}</div>
-                  <div className={`text-xs ${SIG_ACCENT_TEXT}`}>
+                <div className="relative w-full bg-neutral-900 aspect-[4/3]">
+                  <img
+                    src={w.src}
+                    alt={w.alt}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                </div>
+                <div className="p-4 space-y-1.5">
+                  <div className="text-base md:text-lg 2xl:text-xl text-white leading-snug">
+                    {w.title}
+                  </div>
+                  <div
+                    className={`text-xs md:text-sm 2xl:text-base ${SIG_ACCENT_TEXT}`}
+                  >
                     {w.category}
                   </div>
                   {w.story && (
-                    <div className="text-xs text-neutral-400 mt-1 line-clamp-2">
+                    <div className="text-xs md:text-sm 2xl:text-base text-neutral-400 mt-1 line-clamp-2">
                       {w.story}
                     </div>
                   )}
-                  <button
-                    onClick={() => remove(w.id)}
-                    className="mt-3 bg-red-600 hover:bg-red-500 px-3 py-1 rounded text-sm text-white"
-                  >
-                    Supprimer
-                  </button>
+                  <div className="mt-4 flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        if (confirmId === w.id) {
+                          remove(w.id);
+                        } else {
+                          setConfirmId(w.id);
+                        }
+                      }}
+                      className="bg-red-600 hover:bg-red-500 px-3 py-1.5 rounded text-sm md:text-base text-white"
+                      disabled={deletingId === w.id}
+                    >
+                      {deletingId === w.id
+                        ? "Suppression…"
+                        : confirmId === w.id
+                        ? "Confirmer la suppression"
+                        : "Supprimer"}
+                    </button>
+                    {confirmId === w.id && deletingId !== w.id && (
+                      <button
+                        onClick={() => setConfirmId(null)}
+                        className="px-3 py-1.5 rounded text-sm md:text-base border border-neutral-700 text-neutral-200 hover:border-neutral-500"
+                      >
+                        Annuler
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
+          </>
         )}
       </section>
     </>
