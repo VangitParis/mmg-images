@@ -37,12 +37,12 @@ export default function Footer() {
                 className="h-[80px] w-[80px] md:h-[78px] md:w-[78px] object-contain drop-shadow-[0_0_6px_rgba(0,0,0,0.5)]"
               />
             </span>
-            <h3 className="text-lg text-neutral-100 leading-tight">
+            <h3 className="text-lg md:text-xl 2xl:text-2xl text-neutral-100 leading-tight">
               MMG <span className="text-amber-300">Images</span>
             </h3>
             
           </div>
-          <p className="text-sm max-w-xs leading-relaxed">
+          <p className="text-sm md:text-base 2xl:text-lg max-w-xs leading-relaxed">
             Photographies animalières capturées avec patience et lumière naturelle.
           </p>
 
@@ -71,7 +71,7 @@ export default function Footer() {
 
         {/* Bloc central — pages */}
         <div>
-          <h4 className="text-sm text-amber-300 mb-3 tracking-wide uppercase">
+          <h4 className="text-sm md:text-base 2xl:text-lg text-amber-300 mb-3 tracking-wide uppercase">
             Pages du site
           </h4>
           <ul className="space-y-2">
@@ -82,7 +82,7 @@ export default function Footer() {
               <li key={p.slug}>
                 <Link
                   href={`/${p.slug}`}
-                  className="hover:text-amber-300 transition-colors"
+                  className="hover:text-amber-300 transition-colors text-sm md:text-base"
                 >
                   {p.title}
                 </Link>
@@ -92,7 +92,7 @@ export default function Footer() {
         </div>
 
         {/* Bloc droit — signature */}
-        <div className="text-sm text-neutral-500 sm:text-right space-y-1">
+        <div className="text-sm md:text-base 2xl:text-lg text-neutral-500 sm:text-right space-y-1">
           <p>
             © {new Date().getFullYear()}{" "}
             <span className="text-amber-400">MMG Images</span>
@@ -100,7 +100,7 @@ export default function Footer() {
           <p className="text-neutral-600">Tous droits réservés.</p>
           <Link
             href="/mentions-legales"
-            className="text-neutral-500 hover:text-amber-300 text-xs transition-colors"
+            className="text-neutral-500 hover:text-amber-300 text-xs md:text-sm transition-colors"
           >
             Mentions légales
           </Link>

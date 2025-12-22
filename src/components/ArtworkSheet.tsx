@@ -54,7 +54,7 @@ export default function ArtworkSheet({ work, onClose, onBuy }: ArtworkSheetProps
             transition={{ type: "spring", stiffness: 220, damping: 25 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
           >
-            <div className="relative w-full max-w-[clamp(960px,80vw,1500px)] bg-neutral-950 rounded-2xl overflow-hidden border border-neutral-800 shadow-[0_0_80px_rgba(0,0,0,0.6)]">
+            <div className="relative w-full max-w-[500px] md:max-w-[670px] lg:max-w-[900px] xl:max-w-[960px] 2xl:max-w-[1280px] bg-neutral-950 rounded-3xl overflow-hidden border border-neutral-800 shadow-[0_0_80px_rgba(0,0,0,0.6)]">
               <Card className="overflow-hidden">
                 <div className="grid md:grid-cols-2">
                   {/* 🖼️ Image encadrée */}
@@ -83,8 +83,12 @@ export default function ArtworkSheet({ work, onClose, onBuy }: ArtworkSheetProps
                   >
                     <div className="flex items-start justify-between">
                       <div>
-                        <h3 className="text-2xl font-light text-neutral-100">{work.title}</h3>
-                        <p className="text-sm text-neutral-400 mt-1">{work.location}</p>
+                        <h3 className="text-2xl md:text-3xl 2xl:text-4xl font-light text-neutral-100">
+                          {work.title}
+                        </h3>
+                        <p className="text-sm md:text-base 2xl:text-lg text-neutral-400 mt-1">
+                          {work.location}
+                        </p>
                       </div>
                       <Button variant="ghost" onClick={onClose}>
                         <X className="h-5 w-5" />
@@ -98,10 +102,10 @@ export default function ArtworkSheet({ work, onClose, onBuy }: ArtworkSheetProps
                         transition={{ duration: 0.45 }}
                         className="mt-5 border border-neutral-800 rounded-xl bg-neutral-900/40 p-4 shadow-inner shadow-black/30"
                       >
-                        <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500 mb-2">
+                        <p className="text-[11px] md:text-xs 2xl:text-sm uppercase tracking-[0.2em] text-neutral-500 mb-2">
                           Histoire de la prise de vue
                         </p>
-                        <p className="text-sm text-neutral-200 leading-relaxed whitespace-pre-line">
+                        <p className="text-sm md:text-base 2xl:text-lg text-neutral-200 leading-relaxed whitespace-pre-line">
                           {work.story}
                         </p>
                       </motion.div>
@@ -117,10 +121,12 @@ export default function ArtworkSheet({ work, onClose, onBuy }: ArtworkSheetProps
                             transition={{ delay: i * 0.1, duration: 0.4 }}
                             className="flex items-center justify-between border border-neutral-800 rounded-xl p-3 hover:border-neutral-600 hover:bg-neutral-900/30 transition-all duration-300"
                           >
-                            <div className="text-sm text-neutral-300">{p.label}</div>
+                            <div className="text-sm md:text-base 2xl:text-lg text-neutral-300">
+                              {p.label}
+                            </div>
                             <Button
                               onClick={() => onBuy(work, p)}
-                              className="text-sm hover:scale-[1.03] transition-transform duration-300"
+                              className="text-sm md:text-base 2xl:text-lg hover:scale-[1.03] transition-transform duration-300"
                             >
                               Acheter — {(p.amount / 100).toFixed(0)}€
                             </Button>
@@ -138,7 +144,7 @@ export default function ArtworkSheet({ work, onClose, onBuy }: ArtworkSheetProps
                       )}
                     </div>
 
-                    <p className="mt-6 text-xs text-neutral-500">
+                    <p className="mt-6 text-xs md:text-sm 2xl:text-base text-neutral-500">
                       Licence livrée en PDF. Téléchargement ou bon de tirage envoyé par e-mail.
                     </p>
                   </motion.div>

@@ -66,17 +66,17 @@ export default function Navbar({ onCart }: NavbarProps) {
       className="flex items-center gap-2 hover:opacity-95 transition select-none"
       aria-label="MMG Images"
     >
-      <span className="h-[76px] w-[76px] md:h-[110px] md:w-[110px] rounded-full  flex items-center justify-center ]">
+      <span className="h-[76px] w-[76px] md:h-[110px] md:w-[110px] 2xl:h-[170px] 2xl:w-[170px] rounded-full  flex items-center justify-center ]">
         <img
           src="/images/Logo_mmgimages.svg"
           alt="MMG Images"
-          className="h-[80px] w-[80px] md:h-[120px] md:w-[120px] object-contain drop-shadow-[0_0_10px_rgba(0,0,0,0.55)]"
+          className="h-[80px] w-[80px] 2xl:h-[180px] 2xl:w-[180px] md:h-[120px] md:w-[120px] object-contain drop-shadow-[0_0_10px_rgba(0,0,0,0.55)]"
         />
       </span>
     </a>
 
     {/* Desktop nav */}
-    <nav className="hidden md:flex gap-6 text-sm text-neutral-200">
+    <nav className="hidden md:flex gap-6 text-sm 2xl:text-2xl text-neutral-200">
       <button onClick={() => handleNav("gallery")} className="hover:text-white">
         Galerie
       </button>

@@ -23,13 +23,13 @@ export default function Hero({ onEnter }: { onEnter: () => void }) {
       <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-transparent to-transparent" />
 
       <div className="absolute bottom-3 md:bottom-10 left-4 md:left-12 right-4 md:right-auto">
-        <div className="text-4xl md:text-5xl font-light text-neutral-200 drop-shadow">
+        <div className="text-4xl md:text-5xl 2xl:text-7xl font-light text-neutral-200 drop-shadow">
           Regards Sauvages
         </div>
-        <div className="mt-2 text-sm md:text-base text-neutral-300 max-w-2xl">
+        <div className="mt-2 text-sm md:text-base 2xl:text-lg text-neutral-300 max-w-2xl">
           Une collection d’instants suspendus
         </div>
-        <div className="mt-3 text-xs text-neutral-400 tracking-wide">
+        <div className="mt-3 text-xs md:text-sm 2xl:text-base text-neutral-400 tracking-wide">
           {feature.title} {feature.location ? `— ${feature.location}` : ""}
         </div>
         <Button onClick={onEnter} className="mt-4">

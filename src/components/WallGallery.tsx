@@ -79,7 +79,7 @@ export default function WallGallery({ onOpen }: WallGalleryProps) {
           <button
             key={cat}
             onClick={() => handleCategory(cat)}
-            className={`px-6 py-2 rounded-full border text-sm tracking-widest uppercase transition-all duration-1500 ${
+            className={`px-6 py-2 rounded-full border text-sm 2xl:text-base tracking-widest uppercase transition-all duration-150 ${
               active === cat
                 ? "bg-neutral-800 border-neutral-600 text-white shadow-[0_0_10px_rgba(255,255,255,0.1)]"
                 : "border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-600"
@@ -148,12 +148,12 @@ export default function WallGallery({ onOpen }: WallGalleryProps) {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
                   </div>
                   <div className="absolute bottom-4 left-4 right-4">
-                    <h3 className="text-lg font-light">{work.title}</h3>
+                    <h3 className="text-lg md:text-xl 2xl:text-2xl font-light">{work.title}</h3>
                     {work.location && (
-                      <p className="text-xs text-neutral-400">{work.location}</p>
+                      <p className="text-xs md:text-sm 2xl:text-base text-neutral-400">{work.location}</p>
                     )}
                     {work.story && (
-                      <p className="text-[11px] text-neutral-400 italic mt-1 line-clamp-2">
+                      <p className="text-[11px] md:text-xs 2xl:text-sm text-neutral-400 italic mt-1 line-clamp-2">
                         {work.story}
                       </p>
                     )}
