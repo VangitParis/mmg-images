@@ -49,7 +49,7 @@ export default function Footer() {
           {/* Réseaux sociaux */}
           <div className="flex items-center gap-4 mt-4">
             <a
-              href="https://www.instagram.com/mmg.images"
+              href="https://www.instagram.com/mmg_images"
               target="_blank"
               rel="noopener noreferrer"
               className="text-neutral-500 hover:text-amber-300 transition-colors"
@@ -58,7 +58,7 @@ export default function Footer() {
               <Instagram className="w-5 h-5" />
             </a>
             <a
-              href="https://www.facebook.com/mmg_images"
+              href="https://www.facebook.com/mmgimages"
               target="_blank"
               rel="noopener noreferrer"
               className="text-neutral-500 hover:text-amber-300 transition-colors"
