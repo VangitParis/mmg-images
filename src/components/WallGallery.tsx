@@ -143,6 +143,17 @@ export default function WallGallery({ onOpen }: WallGalleryProps) {
     }
   };
 
+  const shareLinks = (work: Work) => {
+    const url = encodeURIComponent(work.src || window.location.href);
+    const text = encodeURIComponent(work.title || "Découverte MMG Images");
+    return {
+      whatsapp: `https://api.whatsapp.com/send?text=${text}%20${url}`,
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${url}`,
+      instagram: "https://www.instagram.com/", // pas de partage direct web
+      copy: work.src || window.location.href,
+    };
+  };
+
   return (
     <section id="gallery" className="bg-neutral-950 text-neutral-100 py-24">
       {/* 🧭 Navigation catégories */}
@@ -230,29 +241,70 @@ export default function WallGallery({ onOpen }: WallGalleryProps) {
                       </p>
                     )}
                   </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleLike(work.id);
-                    }}
-                    className={`absolute bottom-4 right-4 h-9 w-9 rounded-full flex items-center justify-center text-base transition transform ${
-                      liked[work.id]
-                        ? "bg-amber-400 text-black scale-105"
-                        : "bg-black/60 border border-white/15 text-white hover:scale-110"
-                    }`}
-                    aria-label="Ajouter un like"
-                    title={likeCounts[work.id] ? `${likeCounts[work.id]} like(s)` : "Ajouter un like"}
-                  >
-                    🐾
-                  </button>
+                  <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleLike(work.id);
+                      }}
+                      className={`h-9 w-9 rounded-full flex items-center justify-center text-base transition transform ${
+                        liked[work.id]
+                          ? "bg-amber-400 text-black scale-105"
+                          : "bg-black/60 border border-white/15 text-white hover:scale-110"
+                      }`}
+                      aria-label="Ajouter un like"
+                      title={likeCounts[work.id] ? `${likeCounts[work.id]} like(s)` : "Ajouter un like"}
+                    >
+                      🐾
+                    </button>
+                  </div>
                   <span className="absolute bottom-2 right-3 text-[10px] font-serif text-neutral-400 opacity-70">
                     MMG Images
                   </span>
                 </Card>
-                <div className="mt-2 flex items-center justify-start px-1 text-[11px] md:text-xs text-neutral-200">
+                <div className="mt-2 flex items-center justify-between px-1 text-[11px] md:text-xs text-neutral-200">
                   <span className="bg-black/40 px-2 py-1 rounded-full border border-white/10">
                     🐾 {likeCounts[work.id] ?? 0} je craque
                   </span>
+                  <div className="flex items-center gap-2">
+                    {(() => {
+                      const links = shareLinks(work);
+                      return (
+                        <>
+                          <a
+                            href={links.whatsapp}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="h-7 w-7 rounded-full flex items-center justify-center text-[10px] bg-black/60 border border-white/15 text-white hover:scale-105 transition"
+                            title="Partager WhatsApp"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            WA
+                          </a>
+                          <a
+                            href={links.facebook}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="h-7 w-7 rounded-full flex items-center justify-center text-[10px] bg-black/60 border border-white/15 text-white hover:scale-105 transition"
+                            title="Partager Facebook"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Fb
+                          </a>
+                          <a
+                            href={links.instagram}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="h-7 w-7 rounded-full flex items-center justify-center text-[10px] bg-black/60 border border-white/15 text-white hover:scale-105 transition"
+                            title="Ouvrir Instagram"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Ig
+                          </a>
+                        </>
+                      );
+                    })()}
+                  </div>
                 </div>
               </motion.div>
             ))}

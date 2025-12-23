@@ -17,6 +17,7 @@ export default function MobileVerticalGallery({ onOpen }: Props) {
   const [categories, setCategories] = useState<string[]>([]);
   const [active, setActive] = useState<string>("all");
   const [liked, setLiked] = useState<Record<string, boolean>>({});
+  const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const load = async () => {
@@ -47,8 +48,29 @@ export default function MobileVerticalGallery({ onOpen }: Props) {
   }, []);
 
   const toggleLike = (id: string) => {
-    if (liked[id]) return; // pas de dislike, like reste
-    setLiked((prev) => ({ ...prev, [id]: true }));
+    const nextLiked = !liked[id];
+    setLiked((prev) => ({ ...prev, [id]: nextLiked }));
+    setLikeCounts((prev) => ({
+      ...prev,
+      [id]: nextLiked ? (prev[id] ?? 0) + 1 : Math.max(0, (prev[id] ?? 0) - 1),
+    }));
+  };
+
+  const shareWork = async (work: Work) => {
+    const shareData = {
+      title: work.title,
+      text: work.story || work.title,
+      url: work.src || window.location.href,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        window.open(shareData.url, "_blank");
+      }
+    } catch (err) {
+      console.error("Erreur share:", err);
+    }
   };
 
   const filtered =
@@ -105,26 +127,43 @@ export default function MobileVerticalGallery({ onOpen }: Props) {
             {work.location && (
               <p className="text-sm text-neutral-300">{work.location}</p>
             )}
-            {work.story && (
-              <p className="text-xs text-neutral-300 line-clamp-3">
-                {work.story}
-              </p>
-            )}
+          {work.story && (
+            <p className="text-xs text-neutral-300 line-clamp-3">
+              {work.story}
+            </p>
+          )}
+            <div className="flex items-center justify-between pt-2 text-[11px] text-neutral-200">
+              <span className="bg-black/40 px-2 py-1 rounded-full border border-white/10">
+                🐾 {likeCounts[work.id] ?? 0} j'aime / je craque
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    shareWork(work);
+                  }}
+                  className="h-8 w-8 rounded-full flex items-center justify-center text-base bg-black/60 border border-white/15 text-white"
+                  aria-label="Partager"
+                >
+                  ⤴
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleLike(work.id);
+                  }}
+                  className={`h-8 w-8 rounded-full flex items-center justify-center text-base transition transform ${
+                    liked[work.id]
+                      ? "bg-amber-400 text-black scale-105"
+                      : "bg-black/60 border border-white/15 text-white hover:scale-110"
+                  }`}
+                  aria-label="Ajouter un like"
+                >
+                  🐾
+                </button>
+              </div>
+            </div>
           </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleLike(work.id);
-            }}
-            className={`absolute bottom-6 right-6 h-12 w-12 rounded-full flex items-center justify-center text-xl transition transform ${
-              liked[work.id]
-                ? "bg-amber-400 text-black scale-105"
-                : "bg-black/50 border border-white/20 text-white hover:scale-110"
-            }`}
-            aria-label="J'aime"
-          >
-            🐾
-          </button>
         </article>
         ))}
       </div>
