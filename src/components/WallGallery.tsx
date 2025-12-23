@@ -15,6 +15,8 @@ export default function WallGallery({ onOpen }: WallGalleryProps) {
   const [active, setActive] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
   const [switching, setSwitching] = useState<boolean>(false);
+  const [liked, setLiked] = useState<Record<string, boolean>>({});
+  const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
   const normalizeCategory = (value: string) => {
     const trimmed = value?.trim();
     if (!trimmed) return "";
@@ -56,6 +58,34 @@ export default function WallGallery({ onOpen }: WallGalleryProps) {
     loadWorks();
   }, []);
 
+  // Récupère les likes persistés (KV)
+  useEffect(() => {
+    const loadLikes = async () => {
+      try {
+        const res = await fetch("/api/likes", { cache: "no-store" });
+        const data = res.ok ? await res.json() : {};
+        setLikeCounts(data.likes ?? {});
+      } catch (err) {
+        console.error("Erreur chargement likes :", err);
+      }
+    };
+    loadLikes();
+  }, []);
+
+  // 🔄 Récupère les likes mémorisés localement
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("wallLikes");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setLiked(parsed.liked ?? {});
+        setLikeCounts(parsed.likeCounts ?? {});
+      }
+    } catch (err) {
+      console.error("Erreur lecture likes:", err);
+    }
+  }, []);
+
   const grouped = works.reduce<Record<string, Work[]>>((acc, work) => {
     (acc[work.category] ??= []).push(work);
     return acc;
@@ -77,6 +107,41 @@ export default function WallGallery({ onOpen }: WallGalleryProps) {
     !loading &&
     !switching &&
     (!active || (grouped[active] ?? []).length === 0);
+
+  const toggleLike = async (id: string) => {
+    const nextLiked = !liked[id];
+    setLiked((prev) => ({ ...prev, [id]: nextLiked }));
+
+    // Optimistic update
+    setLikeCounts((prev) => {
+      const current = prev[id] ?? 0;
+      const next = nextLiked ? current + 1 : Math.max(0, current - 1);
+      return { ...prev, [id]: next };
+    });
+
+    try {
+      const res = await fetch("/api/likes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, delta: nextLiked ? 1 : -1 }),
+      });
+      const data = await res.json();
+      if (res.ok && typeof data.count === "number") {
+        setLikeCounts((prev) => ({ ...prev, [id]: data.count }));
+      } else {
+        throw new Error(data?.error || "Erreur like");
+      }
+    } catch (err) {
+      console.error("Erreur like :", err);
+      // revert
+      setLiked((prev) => ({ ...prev, [id]: !nextLiked }));
+      setLikeCounts((prev) => {
+        const current = prev[id] ?? 0;
+        const reverted = nextLiked ? Math.max(0, current - 1) : current + 1;
+        return { ...prev, [id]: reverted };
+      });
+    }
+  };
 
   return (
     <section id="gallery" className="bg-neutral-950 text-neutral-100 py-24">
@@ -165,10 +230,30 @@ export default function WallGallery({ onOpen }: WallGalleryProps) {
                       </p>
                     )}
                   </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleLike(work.id);
+                    }}
+                    className={`absolute bottom-4 right-4 h-9 w-9 rounded-full flex items-center justify-center text-base transition transform ${
+                      liked[work.id]
+                        ? "bg-amber-400 text-black scale-105"
+                        : "bg-black/60 border border-white/15 text-white hover:scale-110"
+                    }`}
+                    aria-label="Ajouter un like"
+                    title={likeCounts[work.id] ? `${likeCounts[work.id]} like(s)` : "Ajouter un like"}
+                  >
+                    🐾
+                  </button>
                   <span className="absolute bottom-2 right-3 text-[10px] font-serif text-neutral-400 opacity-70">
                     MMG Images
                   </span>
                 </Card>
+                <div className="mt-2 flex items-center justify-start px-1 text-[11px] md:text-xs text-neutral-200">
+                  <span className="bg-black/40 px-2 py-1 rounded-full border border-white/10">
+                    🐾 {likeCounts[work.id] ?? 0} je craque
+                  </span>
+                </div>
               </motion.div>
             ))}
           </motion.div>

@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
 import Hero from "@/components/Hero";
-import MobileVerticalGallery from "@/components/MobileVerticalGallery";
 import WallGallery from "@/components/WallGallery";
 import ArtworkSheet from "@/components/ArtworkSheet";
 import CartDrawer from "@/components/CartDrawer";
@@ -30,16 +29,6 @@ export default function HomePage() {
           document.getElementById("gallery")?.scrollIntoView({ behavior: "smooth" })
         }
       />
-
-      {/* ✅ Galerie mobile pleine hauteur (TikTok-like) */}
-      <div className="block md:hidden">
-        <MobileVerticalGallery onOpen={(w: Work) => setOpenWork(w)} />
-      </div>
-
-      {/* ✅ Galerie desktop existante */}
-      <div className="hidden md:block">
-        <WallGallery onOpen={(w: Work) => setOpenWork(w)} />
-      </div>
 
       {/* ✅ Galerie dynamique */}
       <WallGallery onOpen={(w: Work) => setOpenWork(w)} />
