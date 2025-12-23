@@ -58,7 +58,7 @@ export default function Footer() {
               <Instagram className="w-5 h-5" />
             </a>
             <a
-              href="https://www.facebook.com/mmgimages"
+              href="https://www.facebook.com/mmgi_mages"
               target="_blank"
               rel="noopener noreferrer"
               className="text-neutral-500 hover:text-amber-300 transition-colors"

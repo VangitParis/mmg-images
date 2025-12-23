@@ -6,6 +6,13 @@ import sharp from "sharp";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+const normalizeCategory = (value: string) => {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return "";
+  const lower = trimmed.toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+};
+
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
@@ -13,7 +20,7 @@ export async function POST(req: Request) {
     const fileUrl = String(formData.get("fileUrl") || "");
     const title = String(formData.get("title") || "");
     const location = String(formData.get("location") || "");
-    const category = String(formData.get("category") || "");
+    const category = normalizeCategory(String(formData.get("category") || ""));
     const prices = String(formData.get("prices") || "");
     const alt = String(formData.get("alt") || "");
     const story = String(formData.get("story") || "");

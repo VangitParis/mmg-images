@@ -15,6 +15,12 @@ export default function WallGallery({ onOpen }: WallGalleryProps) {
   const [active, setActive] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
   const [switching, setSwitching] = useState<boolean>(false);
+  const normalizeCategory = (value: string) => {
+    const trimmed = value?.trim();
+    if (!trimmed) return "";
+    const lower = trimmed.toLowerCase();
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
+  };
 
   useEffect(() => {
     const loadWorks = async () => {
@@ -27,6 +33,7 @@ export default function WallGallery({ onOpen }: WallGalleryProps) {
           ...w,
           alt: w.alt ?? `Photographie ${w.title} - ${w.category}`,
           story: w.story ?? "",
+          category: normalizeCategory(w.category || ""),
         })) as Work[];
 
         setWorks(combined);

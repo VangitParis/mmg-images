@@ -187,6 +187,7 @@ function WorksAdmin() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const normalizeCategory = (value: string) => {
     const trimmed = value?.trim();
@@ -295,8 +296,13 @@ const submit = async (e: React.FormEvent) => {
   setFormError("");
   setStatus("");
 
-  if (!form.title || !form.alt || !file) {
-    setFormError("⚠️ Titre, Alt et Image sont requis.");
+  if (!form.title || !form.alt) {
+    setFormError("⚠️ Titre et Alt sont requis.");
+    return;
+  }
+
+  if (!file && !editingId) {
+    setFormError("⚠️ Une image est requise pour créer une œuvre.");
     return;
   }
 
@@ -314,10 +320,10 @@ const submit = async (e: React.FormEvent) => {
   try {
     setStatus("⏳ Préparation de l’image…");
 
-    // ✅ 1. CRÉATION DE L'IMAGE CROPPÉE RÉELLE
-    let fileToUpload: File = file;
+    // ✅ 1. CRÉATION DE L'IMAGE CROPPÉE RÉELLE (si nouvelle image)
+    let fileToUpload: File | null = file;
 
-    if (preview && croppedPixels) {
+    if (fileToUpload && file && preview && croppedPixels) {
       const croppedBlob = await getCroppedImg(preview, croppedPixels, 2000);
 
       fileToUpload = new File(
@@ -327,26 +333,22 @@ const submit = async (e: React.FormEvent) => {
       );
     }
 
-    setStatus("⏳ Upload sécurisé vers Vercel…");
+    let finalSrc: string | undefined = undefined;
 
-    // ✅ 2. UPLOAD VERCEL BLOB (SANS OPTIONS INTERDITES)
-    const blob = await upload(fileToUpload.name, fileToUpload, {
-      access: "public",
-      handleUploadUrl: "/api/blob-upload",
-    });
-
-    console.log("✅ Upload Blob OK :", blob.url);
+    if (fileToUpload) {
+      setStatus("⏳ Upload sécurisé vers Vercel…");
+      const blob = await upload(fileToUpload.name, fileToUpload, {
+        access: "public",
+        handleUploadUrl: "/api/blob-upload",
+      });
+      finalSrc = blob.url;
+      console.log("✅ Upload Blob OK :", blob.url);
+    } else if (editingId) {
+      const existing = works.find((w) => w.id === editingId);
+      finalSrc = existing?.src;
+    }
 
     setStatus("⏳ Enregistrement des données…");
-
-    // ✅ 3. ENVOI DES MÉTADONNÉES VERS TON API
-    const fd = new FormData();
-    fd.append("fileUrl", blob.url);
-    fd.append("title", form.title);
-    fd.append("location", form.location);
-    fd.append("category", categoryToSave);
-    fd.append("alt", form.alt);
-    fd.append("story", form.story);
 
     const pricesField = [
       form.format1 && form.price1
@@ -359,21 +361,51 @@ const submit = async (e: React.FormEvent) => {
       .filter(Boolean)
       .join("\n");
 
-    fd.append("prices", pricesField);
+    if (editingId) {
+      const res = await fetch("/api/works", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingId,
+          title: form.title,
+          location: form.location,
+          category: categoryToSave,
+          alt: form.alt,
+          story: form.story,
+          prices: pricesField,
+          src: finalSrc,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result?.success) {
+        throw new Error(result?.error || "Erreur serveur");
+      }
+      setStatus("✅ Œuvre mise à jour !");
+    } else {
+      const fd = new FormData();
+      fd.append("fileUrl", finalSrc || "");
+      fd.append("title", form.title);
+      fd.append("location", form.location);
+      fd.append("category", categoryToSave);
+      fd.append("alt", form.alt);
+      fd.append("story", form.story);
+      fd.append("prices", pricesField);
 
-    const res = await fetch("/api/upload", {
-      method: "POST",
-      body: fd,
-    });
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: fd,
+      });
 
-    const result = await res.json();
+      const result = await res.json();
 
-    if (!res.ok || !result?.success) {
-      throw new Error(result?.error || "Erreur serveur");
+      if (!res.ok || !result?.success) {
+        throw new Error(result?.error || "Erreur serveur");
+      }
+
+      setStatus("✅ Œuvre ajoutée avec succès !");
     }
 
     // ✅ 4. RESET COMPLET FORMULAIRE
-    setStatus("✅ Œuvre ajoutée avec succès !");
     setForm({
       title: "",
       location: "",
@@ -391,6 +423,7 @@ const submit = async (e: React.FormEvent) => {
     setPreview(null);
     setZoom(1);
     setNewCategory("");
+    setEditingId(null);
     fetchWorks();
   } catch (err: any) {
     console.error("❌ ERROR SUBMIT:", err);
@@ -644,12 +677,40 @@ const submit = async (e: React.FormEvent) => {
             </div>
           </div>
 
-          <button
-            type="submit"
-            className={`${SIG_ACCENT_BG} text-black px-5 py-2 rounded font-medium transition-colors items-center justify-center flex mx-auto`}
-          >
-            Ajouter l’œuvre
-          </button>
+            <button
+              type="submit"
+              className={`${SIG_ACCENT_BG} text-black px-5 py-2 rounded font-medium transition-colors items-center justify-center flex mx-auto`}
+            >
+            {editingId ? "Mettre à jour" : "Ajouter l’œuvre"}
+            </button>
+            {editingId && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingId(null);
+                  setForm({
+                    title: "",
+                    location: "",
+                    category: "",
+                    prices: "",
+                    alt: "",
+                    story: "",
+                    format1: "",
+                    price1: "",
+                    format2: "",
+                    price2: "",
+                  });
+                  setFile(null);
+                  setPreview(null);
+                  setNewCategory("");
+                  setStatus("");
+                  setFormError("");
+                }}
+                className="mt-2 text-sm text-neutral-400 hover:text-white mx-auto block"
+              >
+                Annuler la modification
+              </button>
+            )}
 
           {status && (
             <p className="text-sm mt-2 text-neutral-400">{status}</p>
@@ -722,7 +783,35 @@ const submit = async (e: React.FormEvent) => {
                       {w.story}
                     </div>
                   )}
-                  <div className="mt-4 flex items-center gap-2">
+                  <div className="mt-4 flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={() => {
+                        setEditingId(w.id);
+                        setForm({
+                          title: w.title || "",
+                          location: w.location || "",
+                          category: w.category || "",
+                          prices: "",
+                          alt: w.alt || "",
+                          story: w.story || "",
+                          format1: w.prices?.[0]?.label || "",
+                          price1: w.prices?.[0]?.amount
+                            ? String(w.prices[0].amount / 100)
+                            : "",
+                          format2: w.prices?.[1]?.label || "",
+                          price2: w.prices?.[1]?.amount
+                            ? String(w.prices[1].amount / 100)
+                            : "",
+                        });
+                        setPreview(w.src || null);
+                        setFile(null);
+                        setNewCategory("");
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                      className="bg-neutral-800 hover:bg-neutral-700 px-3 py-1.5 rounded text-sm md:text-base text-white"
+                    >
+                      Modifier
+                    </button>
                     <button
                       onClick={() => {
                         if (confirmId === w.id) {
