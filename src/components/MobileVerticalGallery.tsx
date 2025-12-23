@@ -14,6 +14,8 @@ const normalizeCategory = (value: string) => {
 
 export default function MobileVerticalGallery({ onOpen }: Props) {
   const [works, setWorks] = useState<Work[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [active, setActive] = useState<string>("all");
   const [liked, setLiked] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -21,13 +23,21 @@ export default function MobileVerticalGallery({ onOpen }: Props) {
       try {
         const res = await fetch("/api/works", { cache: "no-store" });
         const json = res.ok ? await res.json() : [];
-        const combined = [...STATIC_WORKS, ...json].map((w: any) => ({
+        const combinedRaw =
+          json && Array.isArray(json) && json.length > 0 ? json : STATIC_WORKS;
+        const combined = combinedRaw.map((w: any) => ({
           ...w,
           alt: w.alt ?? `Photographie ${w.title} - ${w.category}`,
           story: w.story ?? "",
           category: normalizeCategory(w.category || ""),
         })) as Work[];
         setWorks(combined);
+        const cats = Array.from(
+          new Map(
+            combined.map((w) => [w.category.toLowerCase(), w.category])
+          ).values()
+        );
+        setCategories(cats);
       } catch (err) {
         console.error("Erreur chargement œuvres mobile:", err);
         setWorks(STATIC_WORKS as Work[]);
@@ -41,12 +51,44 @@ export default function MobileVerticalGallery({ onOpen }: Props) {
     setLiked((prev) => ({ ...prev, [id]: true }));
   };
 
+  const filtered =
+    active === "all"
+      ? works
+      : works.filter((w) => w.category.toLowerCase() === active.toLowerCase());
+
   return (
-    <div
-      id="gallery"
-      className="h-screen w-full overflow-y-scroll snap-y snap-mandatory bg-neutral-950 text-neutral-100"
-    >
-      {works.map((work) => (
+    <div className="bg-neutral-950 text-neutral-100 h-screen flex flex-col">
+      <div className="flex items-center gap-2 px-4 py-3 overflow-x-auto no-scrollbar">
+        <button
+          onClick={() => setActive("all")}
+          className={`px-4 py-2 rounded-full text-xs border transition ${
+            active === "all"
+              ? "bg-neutral-800 border-neutral-600 text-white"
+              : "border-neutral-700 text-neutral-300"
+          }`}
+        >
+          Toutes
+        </button>
+        {categories.map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setActive(cat)}
+            className={`px-4 py-2 rounded-full text-xs border transition ${
+              active === cat
+                ? "bg-neutral-800 border-neutral-600 text-white"
+                : "border-neutral-700 text-neutral-300"
+            }`}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      <div
+        id="gallery"
+        className="flex-1 w-full overflow-y-scroll snap-y snap-mandatory bg-neutral-950"
+      >
+        {filtered.map((work) => (
         <article
           key={work.id}
           className="relative h-screen w-full snap-start flex flex-col"
@@ -84,7 +126,8 @@ export default function MobileVerticalGallery({ onOpen }: Props) {
             🐾
           </button>
         </article>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
