@@ -1,5 +1,6 @@
 "use client";
 import { motion, AnimatePresence } from "framer-motion";
+import { useEffect } from "react";
 import Button from "./ui/Button";
 import { X } from "lucide-react";
 import Card from "./ui/Card";
@@ -20,6 +21,15 @@ type ArtworkSheetProps = {
 
 export default function ArtworkSheet({ work, onClose, onBuy }: ArtworkSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+    if (work) {
+      const original = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = original;
+      };
+    }
+  }, [work]);
 
   if (!work) return null;
 
