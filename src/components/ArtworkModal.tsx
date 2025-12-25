@@ -23,7 +23,7 @@ export default function ArtworkModal({
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           transition={{ type: "spring", stiffness: 120, damping: 20 }}
-          className="relative max-w-5xl w-[90vw] h-[80vh] overflow-hidden rounded-2xl shadow-2xl border border-neutral-800"
+          className="relative max-w-5xl w-[90vw]  max-h-[60vh] overflow-hidden rounded-2xl shadow-2xl border border-neutral-800"
         >
           <img
             src={work.src}

@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Card from "./ui/Card";
+import ShareButton from "./ShareButton";
 import { WORKS as STATIC_WORKS } from "@/lib/data";
 import type { Work } from "@/types/work";
 
@@ -143,17 +144,6 @@ export default function WallGallery({ onOpen }: WallGalleryProps) {
     }
   };
 
-  const shareLinks = (work: Work) => {
-    const url = encodeURIComponent(work.src || window.location.href);
-    const text = encodeURIComponent(work.title || "Découverte MMG Images");
-    return {
-      whatsapp: `https://api.whatsapp.com/send?text=${text}%20${url}`,
-      facebook: `https://www.facebook.com/sharer/sharer.php?u=${url}`,
-      instagram: "https://www.instagram.com/", // pas de partage direct web
-      copy: work.src || window.location.href,
-    };
-  };
-
   return (
     <section id="gallery" className="bg-neutral-950 text-neutral-100 py-24">
       {/* 🧭 Navigation catégories */}
@@ -267,43 +257,7 @@ export default function WallGallery({ onOpen }: WallGalleryProps) {
                     🐾 {likeCounts[work.id] ?? 0} je craque
                   </span>
                   <div className="flex items-center gap-2">
-                    {(() => {
-                      const links = shareLinks(work);
-                      return (
-                        <>
-                          <a
-                            href={links.whatsapp}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="h-7 w-7 rounded-full flex items-center justify-center text-[10px] bg-black/60 border border-white/15 text-white hover:scale-105 transition"
-                            title="Partager WhatsApp"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            WA
-                          </a>
-                          <a
-                            href={links.facebook}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="h-7 w-7 rounded-full flex items-center justify-center text-[10px] bg-black/60 border border-white/15 text-white hover:scale-105 transition"
-                            title="Partager Facebook"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            Fb
-                          </a>
-                          <a
-                            href={links.instagram}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="h-7 w-7 rounded-full flex items-center justify-center text-[10px] bg-black/60 border border-white/15 text-white hover:scale-105 transition"
-                            title="Ouvrir Instagram"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            Ig
-                          </a>
-                        </>
-                      );
-                    })()}
+                    <ShareButton work={work} />
                   </div>
                 </div>
               </motion.div>

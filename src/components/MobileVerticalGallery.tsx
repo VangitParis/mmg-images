@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import type { Work } from "@/types/work";
+import ShareButton from "./ShareButton";
 import { WORKS as STATIC_WORKS } from "@/lib/data";
 
 type Props = { onOpen: (work: Work) => void };
@@ -54,23 +55,6 @@ export default function MobileVerticalGallery({ onOpen }: Props) {
       ...prev,
       [id]: nextLiked ? (prev[id] ?? 0) + 1 : Math.max(0, (prev[id] ?? 0) - 1),
     }));
-  };
-
-  const shareWork = async (work: Work) => {
-    const shareData = {
-      title: work.title,
-      text: work.story || work.title,
-      url: work.src || window.location.href,
-    };
-    try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        window.open(shareData.url, "_blank");
-      }
-    } catch (err) {
-      console.error("Erreur share:", err);
-    }
   };
 
   const filtered =
@@ -137,16 +121,7 @@ export default function MobileVerticalGallery({ onOpen }: Props) {
                 🐾 {likeCounts[work.id] ?? 0} j'aime / je craque
               </span>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    shareWork(work);
-                  }}
-                  className="h-8 w-8 rounded-full flex items-center justify-center text-base bg-black/60 border border-white/15 text-white"
-                  aria-label="Partager"
-                >
-                  ⤴
-                </button>
+                <ShareButton work={work} />
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
