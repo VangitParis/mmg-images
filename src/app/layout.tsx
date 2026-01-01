@@ -5,7 +5,7 @@ import Footer from "@/components/Footer";
 export const metadata: Metadata = {
   title: "MMG Images — Galerie Photo Animalière",
   description:
-    "Exposition numérique et vente d'œuvres photographiques par MMG Images.",
+    "Exposition numérique et vente d'œuvres photographiques par MMG Images (Marie Manuella Girardot), photographe animalière.",
 };
 
 export default function RootLayout({
