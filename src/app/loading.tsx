@@ -9,7 +9,7 @@ export default function Loading() {
         />
         <div className="absolute inset-0 flex items-center justify-center bg-neutral-950 rounded-full">
           <img
-            src="/images/Logo_mmgimages.svg"
+            src="/images/Logo_mmgimages.png"
             alt="MMG Images"
             className="h-14 w-14 object-contain drop-shadow-[0_0_10px_rgba(0,0,0,0.6)]"
           />

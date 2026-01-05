@@ -66,11 +66,11 @@ export default function Navbar({ onCart }: NavbarProps) {
       className="flex items-center gap-2 hover:opacity-95 transition select-none"
       aria-label="MMG Images"
     >
-      <span className="h-[76px] w-[76px] md:h-[110px] md:w-[110px] 2xl:h-[340px] 2xl:w-[340px] rounded-full  flex items-center justify-center ]">
+      <span className="h-[76px] w-[76px] md:h-[120px] md:w-[120px] 2xl:h-[340px] 2xl:w-[340px] rounded-full  flex items-center justify-center ]">
         <img
-          src="/images/Logo_mmgimages.svg"
+          src="/images/Logo_mmgimages.png"
           alt="MMG Images"
-          className="h-[80px] w-[80px] md:h-[120px] md:w-[120px] 2xl:h-[350px] 2xl:w-[350px] object-contain drop-shadow-[0_0_10px_rgba(0,0,0,0.55)]"
+          className="h-[80px] w-[80px] md:h-[130px] md:w-[130px] 2xl:h-[350px] 2xl:w-[350px] object-contain drop-shadow-[0_0_10px_rgba(0,0,0,0.55)]"
         />
       </span>
     </a>
