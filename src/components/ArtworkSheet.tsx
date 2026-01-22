@@ -130,6 +130,32 @@ export default function ArtworkSheet({ work, onClose, onBuy }: ArtworkSheetProps
                             >
                               Acheter — {(p.amount / 100).toFixed(0)}€
                             </Button>
+                            <Button
+                              variant="ghost"
+                              onClick={() => {
+                                // achat direct sans panier
+                                fetch("/api/checkout", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ items: [{ work, price: p }] }),
+                                })
+                                  .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+                                  .then(({ ok, data }) => {
+                                    if (ok && data?.url) {
+                                      window.location.href = data.url;
+                                    } else {
+                                      alert(data?.error || "Paiement indisponible.");
+                                    }
+                                  })
+                                  .catch((err) => {
+                                    console.error("Checkout error:", err);
+                                    alert("Erreur paiement, réessaie.");
+                                  });
+                              }}
+                              className="text-xs md:text-sm 2xl:text-base hover:scale-[1.02] transition-transform duration-300"
+                            >
+                              Acheter maintenant
+                            </Button>
                           </motion.div>
                         ))
                       ) : (

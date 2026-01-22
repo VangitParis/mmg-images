@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import type { Work } from "@/types/work";
+import Image from "next/image";
 import ShareButton from "./ShareButton";
 import { WORKS as STATIC_WORKS } from "@/lib/data";
 
@@ -94,18 +95,30 @@ export default function MobileVerticalGallery({ onOpen }: Props) {
         id="gallery"
         className="flex-1 w-full overflow-y-scroll snap-y snap-mandatory bg-neutral-950"
       >
-        {filtered.map((work) => (
+        {filtered.map((work) => {
+          const isJxl = !!work.src && /\.jxl($|\?)/i.test(work.src);
+          const imageSrc = isJxl
+            ? work.src
+            : `/api/preview?url=${encodeURIComponent(work.src)}&title=${encodeURIComponent(
+                work.title
+              )}`;
+          return (
         <article
           key={work.id}
           className="relative h-screen w-full snap-start flex flex-col"
           onClick={() => onOpen(work)}
         >
-          <img
-            src={`/api/preview?url=${encodeURIComponent(work.src)}&title=${encodeURIComponent(
-              work.title
-            )}`}
+          <Image
+            src={imageSrc}
             alt={work.alt}
+            fill
+            sizes="100vw"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = work.src;
+            }}
             className="absolute inset-0 h-full w-full object-cover"
+            priority={work.id === filtered[0]?.id}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none" />
           <div className="mt-auto relative z-10 p-5 space-y-2">
@@ -142,7 +155,8 @@ export default function MobileVerticalGallery({ onOpen }: Props) {
             </div>
           </div>
         </article>
-        ))}
+        );
+        })}
       </div>
     </div>
   );

@@ -3,12 +3,9 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   images: {
-    domains: [
-      "scontent-fra3-1.xx.fbcdn.net",
-      "scontent-fra5-2.xx.fbcdn.net",
-      "scontent.xx.fbcdn.net",
-      "scontent.cdninstagram.com",
-    ],
+    // Autorise nos URLs locales avec query string (ex: /api/preview?url=...&title=...)
+    localPatterns: [{ pathname: "/api/preview" }],
+    // On retire temporairement la config domains dépréciée
   },
   outputFileTracingRoot: path.join(__dirname),
 };

@@ -2,6 +2,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import Button from "./ui/Button";
+import { useState } from "react";
 
 // --- Types ---
 type Price = {
@@ -28,6 +29,30 @@ type CartDrawerProps = {
 // --- Composant ---
 export default function CartDrawer({ items, onClose }: CartDrawerProps) {
   const total = items.reduce((sum, item) => sum + item.price.amount, 0);
+  const [loading, setLoading] = useState(false);
+
+  const checkout = async () => {
+    if (loading || items.length === 0) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+      });
+      const data = await res.json();
+      if (res.ok && data?.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data?.error || "Paiement indisponible.");
+      }
+    } catch (err) {
+      console.error("Checkout error:", err);
+      alert("Erreur paiement, réessaie.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -89,9 +114,10 @@ export default function CartDrawer({ items, onClose }: CartDrawerProps) {
 
             <Button
               className="w-full mt-3"
-              onClick={() => alert("Brancher Stripe Checkout ici.")}
+              onClick={checkout}
+              disabled={loading || items.length === 0}
             >
-              Payer
+              {loading ? "Redirection..." : "Payer"}
             </Button>
 
             <p className="text-[11px] text-neutral-500 mt-2">

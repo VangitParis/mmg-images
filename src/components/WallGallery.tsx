@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Card from "./ui/Card";
+import Image from "next/image";
 import ShareButton from "./ShareButton";
 import { WORKS as STATIC_WORKS } from "@/lib/data";
 import type { Work } from "@/types/work";
@@ -199,7 +200,14 @@ export default function WallGallery({ onOpen }: WallGalleryProps) {
             transition={{ duration: 0.6 }}
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 lg:gap-12"
           >
-            {(grouped[active] ?? []).map((work, i) => (
+            {(grouped[active] ?? []).map((work, i) => {
+              const isJxl = !!work.src && /\.jxl($|\?)/i.test(work.src);
+              const imageSrc = isJxl
+                ? work.src
+                : `/api/preview?url=${encodeURIComponent(work.src)}&title=${encodeURIComponent(
+                    work.title
+                  )}`;
+              return (
               <motion.div
                 key={work.id}
                 initial={{ opacity: 0, y: 40 }}
@@ -210,13 +218,18 @@ export default function WallGallery({ onOpen }: WallGalleryProps) {
               >
                 <Card className="relative overflow-hidden rounded-2xl border border-neutral-800 shadow-lg group-hover:shadow-[0_0_40px_rgba(255,255,255,0.08)] transition-all duration-500">
                   <div className="relative w-full bg-neutral-900 aspect-[4/3]">
-                    <img
-                      src={`/api/preview?url=${encodeURIComponent(work.src)}&title=${encodeURIComponent(work.title)}`}
+                    <Image
+                      src={imageSrc}
                       alt={work.alt}
-                      loading="lazy"
-                      decoding="async"
+                      fill
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = work.src;
+                      }}
                       className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-700"
                       style={{ objectPosition: "0px -22px" }}
+                      priority={i < 2}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
                   </div>
@@ -261,7 +274,8 @@ export default function WallGallery({ onOpen }: WallGalleryProps) {
                   </div>
                 </div>
               </motion.div>
-            ))}
+            );
+            })}
           </motion.div>
         </AnimatePresence>
       </div>

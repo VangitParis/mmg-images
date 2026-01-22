@@ -5,7 +5,7 @@ export const WORKS = [
     title: "Renard curieux",
     location: "Forêt de Fontainebleau",
     category: "Renards",
-    src: "/images/114A4448.jxl",
+    src: "/images/fox.jpg",
     aspect: 3 / 4,
     alt: "Renard à la langue bien pendue !",
     prices: [

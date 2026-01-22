@@ -2,6 +2,7 @@
 import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
+import Image from "next/image";
 
 export default function ArtworkModal({
   work,
@@ -12,6 +13,8 @@ export default function ArtworkModal({
 }) {
   const previewUrl = useMemo(() => {
     if (!work?.src) return "";
+    const isJxl = /\.jxl($|\?)/i.test(work.src);
+    if (isJxl) return work.src;
     const u = encodeURIComponent(work.src);
     const t = encodeURIComponent(work?.title ?? "MMG Images");
     return `/api/preview?url=${u}&title=${t}`;
@@ -46,9 +49,16 @@ export default function ArtworkModal({
 
           <div className="flex flex-col">
             <div className="relative w-full">
-              <img
-                src={previewUrl}
+              <Image
+                src={previewUrl || work.src}
                 alt={work.title}
+                width={1600}
+                height={900}
+                sizes="100vw"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = work.src;
+                }}
                 className="w-full h-auto max-h-[70vh] object-contain select-none"
                 draggable={false}
               />

@@ -11,6 +11,9 @@ type ShareButtonProps = {
 
 const buildUrl = (work: Work) => {
   if (work?.src) {
+    const isJxl = /\.jxl($|\?)/i.test(work.src);
+    // jxl n'est pas supporté par la route preview : on renvoie directement l'URL originale
+    if (isJxl) return work.src;
     const u = encodeURIComponent(work.src);
     const t = encodeURIComponent(work?.title || "");
     return `/api/preview?url=${u}&title=${t}`;
