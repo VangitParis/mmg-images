@@ -9,7 +9,14 @@ type ShareButtonProps = {
   className?: string;
 };
 
-const buildUrl = (work: Work) => work.src || (typeof window !== "undefined" ? window.location.href : "");
+const buildUrl = (work: Work) => {
+  if (work?.src) {
+    const u = encodeURIComponent(work.src);
+    const t = encodeURIComponent(work?.title || "");
+    return `/api/preview?url=${u}&title=${t}`;
+  }
+  return typeof window !== "undefined" ? window.location.href : "";
+};
 
 export default function ShareButton({ work, className }: ShareButtonProps) {
   const [open, setOpen] = useState(false);

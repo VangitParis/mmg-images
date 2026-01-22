@@ -211,7 +211,7 @@ export default function WallGallery({ onOpen }: WallGalleryProps) {
                 <Card className="relative overflow-hidden rounded-2xl border border-neutral-800 shadow-lg group-hover:shadow-[0_0_40px_rgba(255,255,255,0.08)] transition-all duration-500">
                   <div className="relative w-full bg-neutral-900 aspect-[4/3]">
                     <img
-                      src={work.src}
+                      src={`/api/preview?url=${encodeURIComponent(work.src)}&title=${encodeURIComponent(work.title)}`}
                       alt={work.alt}
                       loading="lazy"
                       decoding="async"

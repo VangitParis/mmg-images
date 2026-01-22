@@ -188,6 +188,7 @@ function WorksAdmin() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const DRAFT_KEY = "adminFormDraft";
 
   const normalizeCategory = (value: string) => {
     const trimmed = value?.trim();
@@ -223,6 +224,33 @@ function WorksAdmin() {
   useEffect(() => {
     fetchWorks();
   }, []);
+
+  // Charger le brouillon local au premier rendu
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const draft = JSON.parse(raw);
+        if (draft.form) setForm((prev) => ({ ...prev, ...draft.form }));
+        if (draft.newCategory) setNewCategory(draft.newCategory);
+        if (draft.aspect !== undefined) setAspect(draft.aspect);
+      }
+    } catch (err) {
+      console.error("Erreur chargement brouillon admin:", err);
+    }
+  }, []);
+
+  // Sauvegarde du brouillon à chaque changement de form
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const payload = { form, newCategory, aspect };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+    } catch (err) {
+      console.error("Erreur sauvegarde brouillon admin:", err);
+    }
+  }, [form, newCategory, aspect]);
 
   // Auto-complétion prix (fusion KV + local)
   useEffect(() => {
@@ -381,6 +409,7 @@ const submit = async (e: React.FormEvent) => {
         throw new Error(result?.error || "Erreur serveur");
       }
       setStatus("✅ Œuvre mise à jour !");
+      if (typeof window !== "undefined") localStorage.removeItem(DRAFT_KEY);
     } else {
       const fd = new FormData();
       fd.append("fileUrl", finalSrc || "");
@@ -403,6 +432,7 @@ const submit = async (e: React.FormEvent) => {
       }
 
       setStatus("✅ Œuvre ajoutée avec succès !");
+      if (typeof window !== "undefined") localStorage.removeItem(DRAFT_KEY);
     }
 
     // ✅ 4. RESET COMPLET FORMULAIRE
@@ -472,6 +502,91 @@ const submit = async (e: React.FormEvent) => {
           className="max-w-3xl space-y-4"
           encType="multipart/form-data"
         >
+          {/* Upload en premier */}
+          <label className="block w-full text-center border-2 border-dashed border-neutral-700 p-6 rounded-lg cursor-pointer hover:bg-neutral-900/40 transition">
+            <span className="text-sm text-neutral-400">
+              {file
+                ? "Image sélectionnée ✅"
+                : "📷 Choisir une image ou prendre une photo"}
+            </span>
+            <input
+              type="file"
+              accept="image/*,.jxl"
+              className="hidden"
+              onChange={onFile}
+            />
+          </label>
+
+          {/* Choix des ratios juste sous l'upload */}
+          <div className="flex flex-wrap gap-2 text-xs text-neutral-300 mb-2">
+            <span className="text-neutral-500 mr-2">Format :</span>
+
+            <button
+              type="button"
+              onClick={() => setAspect(4 / 3)}
+              className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
+            >
+              4 / 3
+            </button>
+            <button
+              type="button"
+              onClick={() => setAspect(16 / 9)}
+              className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
+            >
+              16 / 9
+            </button>
+            <button
+              type="button"
+              onClick={() => setAspect(16 / 10)}
+              className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
+            >
+              16 / 10
+            </button>
+            <button
+              type="button"
+              onClick={() => setAspect(3 / 4)}
+              className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
+            >
+              3 / 4
+            </button>
+            <button
+              type="button"
+              onClick={() => setAspect(1)}
+              className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
+            >
+              1 / 1
+            </button>
+            <button
+              type="button"
+              onClick={() => setAspect(undefined)}
+              className="px-3 py-1 rounded border border-amber-500 text-amber-300 hover:bg-neutral-900/60"
+            >
+              Libre
+            </button>
+          </div>
+          {preview && (
+            <div className="relative w-full h-72 border border-neutral-800 rounded-lg overflow-hidden">
+              <Cropper
+                image={preview}
+                crop={crop}
+                zoom={zoom}
+                aspect={aspect}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={(_, pixels) => setCroppedPixels(pixels)}
+              />
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.01}
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="w-full absolute bottom-2 left-2 right-2"
+              />
+            </div>
+          )}
+
           <div className="grid sm:grid-cols-2 gap-4">
             <input
               className="p-3 rounded bg-neutral-900 border border-neutral-800 outline-none focus:border-neutral-600"
@@ -542,93 +657,7 @@ const submit = async (e: React.FormEvent) => {
             }
           />
 
-          {/* Upload */}
-          <label className="block w-full text-center border-2 border-dashed border-neutral-700 p-6 rounded-lg cursor-pointer hover:bg-neutral-900/40 transition">
-            <span className="text-sm text-neutral-400">
-              {file
-                ? "Image sélectionnée ✅"
-                : "📷 Choisir une image ou prendre une photo"}
-            </span>
-            <input
-              type="file"
-              accept="image/*,.jxl"
-              className="hidden"
-              onChange={onFile}
-            />
-          </label>
-
           {/* Choix des ratios */}
-          <div className="flex flex-wrap gap-2 text-xs text-neutral-300 mb-2">
-            <span className="text-neutral-500 mr-2">Format :</span>
-
-            <button
-              type="button"
-              onClick={() => setAspect(4 / 3)}
-              className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
-            >
-              4 / 3
-            </button>
-            <button
-              type="button"
-              onClick={() => setAspect(16 / 9)}
-              className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
-            >
-              16 / 9
-            </button>
-            <button
-              type="button"
-              onClick={() => setAspect(16 / 10)}
-              className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
-            >
-              16 / 10
-            </button>
-            <button
-              type="button"
-              onClick={() => setAspect(3 / 4)}
-              className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
-            >
-              3 / 4
-            </button>
-            <button
-              type="button"
-              onClick={() => setAspect(1)}
-              className="px-3 py-1 rounded border border-neutral-700 hover:bg-neutral-900/60"
-            >
-              1 / 1
-            </button>
-            <button
-              type="button"
-              onClick={() => setAspect(undefined)}
-              className="px-3 py-1 rounded border border-amber-500 text-amber-300 hover:bg-neutral-900/60"
-            >
-              Libre
-            </button>
-          </div>
-
-          {preview && (
-            <div className="relative w-full h-96 border border-neutral-800 rounded-lg overflow-hidden">
-              <Cropper
-                image={preview}
-                crop={crop}
-                zoom={zoom}
-                aspect={aspect}
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
-                onCropComplete={(_, pixels) => setCroppedPixels(pixels)}
-              />
-              <input
-  type="range"
-  min={1}
-  max={3}
-  step={0.01}
-  value={zoom}
-  onChange={(e) => setZoom(Number(e.target.value))}
-  className="w-full mt-3"
-/>
-
-            </div>
-          )}
-
           <div className="space-y-2">
             <label className="block text-sm text-neutral-400">
               Formats & prix (remplis les montants uniquement)
@@ -705,6 +734,7 @@ const submit = async (e: React.FormEvent) => {
                   setNewCategory("");
                   setStatus("");
                   setFormError("");
+                  if (typeof window !== "undefined") localStorage.removeItem(DRAFT_KEY);
                 }}
                 className="mt-2 text-sm text-neutral-400 hover:text-white mx-auto block"
               >

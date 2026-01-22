@@ -101,7 +101,9 @@ export default function MobileVerticalGallery({ onOpen }: Props) {
           onClick={() => onOpen(work)}
         >
           <img
-            src={work.src}
+            src={`/api/preview?url=${encodeURIComponent(work.src)}&title=${encodeURIComponent(
+              work.title
+            )}`}
             alt={work.alt}
             className="absolute inset-0 h-full w-full object-cover"
           />
