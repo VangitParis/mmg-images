@@ -6,6 +6,30 @@ import { WORKS } from "@/lib/data"; // utilisé en fallback si besoin
 
 export const runtime = "nodejs";
 
+let fontDataUrl: string | null = null;
+
+async function getFontDataUrl() {
+  if (fontDataUrl) return fontDataUrl;
+  try {
+    const fontPath = path.join(
+      process.cwd(),
+      "node_modules",
+      "next",
+      "dist",
+      "compiled",
+      "@vercel",
+      "og",
+      "noto-sans-v27-latin-regular.ttf"
+    );
+    const fontBuf = await readFile(fontPath);
+    fontDataUrl = `data:font/ttf;base64,${fontBuf.toString("base64")}`;
+  } catch (err) {
+    console.error("PREVIEW font read failed", err);
+    fontDataUrl = "";
+  }
+  return fontDataUrl;
+}
+
 function escapeXml(input: string) {
   return input
     .replaceAll("&", "&amp;")
@@ -15,17 +39,23 @@ function escapeXml(input: string) {
     .replaceAll("'", "&apos;");
 }
 
-function logoOverlaySvg(logoDataUrl: string, w = 1200, h = 800) {
+function logoOverlaySvg(logoDataUrl: string, fontUrl: string, w = 1200, h = 800) {
   const size = Math.round(Math.min(w, h) * 0.18);
   const x = Math.round((w - size) / 2);
   const y = Math.round((h - size) / 2);
   return Buffer.from(`
   <svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
+    <style>
+      @font-face {
+        font-family: 'NotoSans';
+        src: url('${fontUrl}') format('truetype');
+      }
+    </style>
     <defs>
       <pattern id="wmtext" patternUnits="userSpaceOnUse" width="520" height="320" patternTransform="rotate(-18)">
         <text x="0" y="180"
               font-size="30"
-              font-family="DejaVu Sans, Arial, sans-serif"
+              font-family="NotoSans, sans-serif"
               font-weight="700"
               fill="white"
               fill-opacity="0.08"
@@ -71,8 +101,15 @@ export async function GET(req: Request) {
     if (lowerUrl.endsWith(".jxl")) {
       // Fournit un placeholder lisible au lieu d'une 415 répétée
       const msg = `PREVIEW NON DISPONIBLE — ${title}`.toUpperCase();
+      const fontUrl = (await getFontDataUrl()) || "";
       const svg = Buffer.from(`
         <svg width="1400" height="900" xmlns="http://www.w3.org/2000/svg">
+          <style>
+            @font-face {
+              font-family: 'NotoSans';
+              src: url('${fontUrl}') format('truetype');
+            }
+          </style>
           <defs>
             <linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
               <stop offset="0%" stop-color="#0b0b0b"/>
@@ -81,11 +118,11 @@ export async function GET(req: Request) {
           </defs>
           <rect width="100%" height="100%" fill="url(#g)"/>
           <text x="50%" y="45%" text-anchor="middle" fill="#ffffff" fill-opacity="0.8"
-                font-family="DejaVu Sans, Arial, sans-serif" font-size="34" font-weight="700" letter-spacing="2">
+                font-family="NotoSans, sans-serif" font-size="34" font-weight="700" letter-spacing="2">
             ${escapeXml(msg)}
           </text>
           <text x="50%" y="55%" text-anchor="middle" fill="#ffffff" fill-opacity="0.6"
-                font-family="DejaVu Sans, Arial, sans-serif" font-size="20" letter-spacing="2">
+                font-family="NotoSans, sans-serif" font-size="20" letter-spacing="2">
             FORMAT JXL NON SUPPORTÉ
           </text>
         </svg>
@@ -103,6 +140,7 @@ export async function GET(req: Request) {
     }
 
     let logoDataUrl = "";
+    const fontUrl = (await getFontDataUrl()) || "";
     try {
       const logoPath = path.join(process.cwd(), "public", "images", "Logo_mmgimages-NT.png");
       const logoBuf = await readFile(logoPath);
@@ -142,8 +180,8 @@ export async function GET(req: Request) {
     }
 
     const overlaySvg =
-      logoDataUrl && resized?.info?.width && resized?.info?.height
-        ? logoOverlaySvg(logoDataUrl, resized.info.width, resized.info.height)
+      logoDataUrl && fontUrl && resized?.info?.width && resized?.info?.height
+        ? logoOverlaySvg(logoDataUrl, fontUrl, resized.info.width, resized.info.height)
         : null;
 
     let out: Buffer;
