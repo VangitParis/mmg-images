@@ -17,10 +17,11 @@ export default function ArtworkModal({
     if (isJxl) return work.src;
     const u = encodeURIComponent(work.src);
     const t = encodeURIComponent(work?.title ?? "MMG Images");
-    return `/api/preview?url=${u}&title=${t}`;
+    return `/api/preview?url=${u}&title=${t}&v=logo-nt-1`;
   }, [work]);
 
   if (!work) return null;
+  const isJxl = /\.jxl($|\?)/i.test(work.src);
 
   return (
     <AnimatePresence>
@@ -63,6 +64,13 @@ export default function ArtworkModal({
                 draggable={false}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+              {isJxl && (
+                <div
+                  aria-hidden
+                  className="absolute inset-0 opacity-35 bg-center bg-no-repeat bg-[length:160px] mix-blend-soft-light pointer-events-none"
+                  style={{ backgroundImage: "url('/images/Logo_mmgimages-NT.png')" }}
+                />
+              )}
             </div>
 
             <div className="p-5 space-y-3">

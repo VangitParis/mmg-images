@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Button from "./ui/Button";
 import { X } from "lucide-react";
 import Card from "./ui/Card";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 
 type Price = {
   label: string;
@@ -20,6 +20,14 @@ type ArtworkSheetProps = {
 
 export default function ArtworkSheet({ work, onClose, onBuy }: ArtworkSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
+  const previewUrl = useMemo(() => {
+    if (!work?.src) return "";
+    const isJxl = /\.jxl($|\?)/i.test(work.src);
+    if (isJxl) return work.src;
+    const u = encodeURIComponent(work.src);
+    const t = encodeURIComponent(work?.title ?? "MMG Images");
+    return `/api/preview?url=${u}&title=${t}&v=logo-nt-1`;
+  }, [work]);
 
   if (!work) return null;
 
@@ -66,11 +74,18 @@ export default function ArtworkSheet({ work, onClose, onBuy }: ArtworkSheetProps
                   >
                     <div className="relative border-[6px] border-neutral-800 rounded-xl overflow-hidden shadow-[0_0_30px_rgba(255,255,255,0.05)]">
                       <img
-                        src={work.src}
+                        src={previewUrl || work.src}
                         alt={work.title}
                         className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-white/10 via-transparent to-transparent pointer-events-none" />
+                      {/\.jxl($|\?)/i.test(work.src) && (
+                        <div
+                          aria-hidden
+                          className="absolute inset-0 opacity-35 bg-center bg-no-repeat bg-[length:140px] mix-blend-soft-light pointer-events-none"
+                          style={{ backgroundImage: "url('/images/Logo_mmgimages-NT.png')" }}
+                        />
+                      )}
                     </div>
                   </motion.div>
 

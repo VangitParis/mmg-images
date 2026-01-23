@@ -101,7 +101,7 @@ export default function MobileVerticalGallery({ onOpen }: Props) {
             ? work.src
             : `/api/preview?url=${encodeURIComponent(work.src)}&title=${encodeURIComponent(
                 work.title
-              )}`;
+              )}&v=logo-nt-1`;
           return (
         <article
           key={work.id}
@@ -121,6 +121,13 @@ export default function MobileVerticalGallery({ onOpen }: Props) {
             priority={work.id === filtered[0]?.id}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none" />
+          {isJxl && (
+            <div
+              aria-hidden
+              className="absolute inset-0 opacity-35 bg-center bg-no-repeat bg-[length:150px] mix-blend-soft-light pointer-events-none"
+              style={{ backgroundImage: "url('/images/Logo_mmgimages-NT.png')" }}
+            />
+          )}
           <div className="mt-auto relative z-10 p-5 space-y-2">
             <h3 className="text-2xl font-light drop-shadow">{work.title}</h3>
             {work.location && (

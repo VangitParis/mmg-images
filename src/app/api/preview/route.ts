@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import sharp from "sharp";
+import { readFile } from "fs/promises";
+import path from "path";
 import { WORKS } from "@/lib/data"; // utilisé en fallback si besoin
 
 export const runtime = "nodejs";
@@ -13,24 +15,27 @@ function escapeXml(input: string) {
     .replaceAll("'", "&apos;");
 }
 
-function watermarkSvg(text: string, w = 1200, h = 800) {
-  const safe = escapeXml(text);
+function logoOverlaySvg(logoDataUrl: string, w = 1200, h = 800) {
+  const size = Math.round(Math.min(w, h) * 0.18);
+  const x = Math.round((w - size) / 2);
+  const y = Math.round((h - size) / 2);
   return Buffer.from(`
   <svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <pattern id="wm" patternUnits="userSpaceOnUse" width="520" height="320" patternTransform="rotate(-18)">
+      <pattern id="wmtext" patternUnits="userSpaceOnUse" width="520" height="320" patternTransform="rotate(-18)">
         <text x="0" y="180"
-              font-size="36"
+              font-size="30"
               font-family="Arial"
-              font-weight="800"
+              font-weight="700"
               fill="white"
-              fill-opacity="0.35"
+              fill-opacity="0.08"
               letter-spacing="4">
-          ${safe}
+          MMGIMAGES.COM
         </text>
       </pattern>
     </defs>
-    <rect width="100%" height="100%" fill="url(#wm)"/>
+    <rect width="100%" height="100%" fill="url(#wmtext)"/>
+    <image href="${logoDataUrl}" x="${x}" y="${y}" width="${size}" height="${size}" opacity="0.32" />
   </svg>`);
 }
 
@@ -97,7 +102,14 @@ export async function GET(req: Request) {
       });
     }
 
-    const wm = watermarkSvg(`MMGIMAGES.COM — ${title.toUpperCase()}`);
+    let logoDataUrl = "";
+    try {
+      const logoPath = path.join(process.cwd(), "public", "images", "Logo_mmgimages-NT.png");
+      const logoBuf = await readFile(logoPath);
+      logoDataUrl = `data:image/png;base64,${logoBuf.toString("base64")}`;
+    } catch (logoErr) {
+      console.error("PREVIEW logo read failed", logoErr);
+    }
 
     let absoluteUrl: URL;
     try {
@@ -129,18 +141,21 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Invalid or unsupported image" }, { status: 415 });
     }
 
-    const wmDyn = watermarkSvg(
-      `MMGIMAGES.COM — ${title.toUpperCase()}`,
-      resized.info.width || 1200,
-      resized.info.height || 800
-    );
+    const overlaySvg =
+      logoDataUrl && resized?.info?.width && resized?.info?.height
+        ? logoOverlaySvg(logoDataUrl, resized.info.width, resized.info.height)
+        : null;
 
     let out: Buffer;
     try {
-      out = await sharp(resized.data)
-        .composite([{ input: wmDyn, gravity: "center" }])
-        .jpeg({ quality: 78, mozjpeg: true })
-        .toBuffer();
+      if (overlaySvg) {
+        out = await sharp(resized.data)
+          .composite([{ input: overlaySvg, gravity: "center" }])
+          .jpeg({ quality: 78, mozjpeg: true })
+          .toBuffer();
+      } else {
+        out = await sharp(resized.data).jpeg({ quality: 78, mozjpeg: true }).toBuffer();
+      }
     } catch (err) {
       console.error("Composite failed, returning resized jpeg only:", err);
       out = await sharp(resized.data).jpeg({ quality: 78, mozjpeg: true }).toBuffer();

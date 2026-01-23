@@ -206,7 +206,7 @@ export default function WallGallery({ onOpen }: WallGalleryProps) {
                 ? work.src
                 : `/api/preview?url=${encodeURIComponent(work.src)}&title=${encodeURIComponent(
                     work.title
-                  )}`;
+                  )}&v=logo-nt-1`;
               return (
               <motion.div
                 key={work.id}
@@ -232,6 +232,13 @@ export default function WallGallery({ onOpen }: WallGalleryProps) {
                       priority={i < 2}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+                    {isJxl && (
+                      <div
+                        aria-hidden
+                        className="absolute inset-0 opacity-35 bg-center bg-no-repeat bg-[length:140px] mix-blend-soft-light pointer-events-none"
+                        style={{ backgroundImage: "url('/images/Logo_mmgimages-NT.png')" }}
+                      />
+                    )}
                   </div>
                   <div className="absolute bottom-4 left-4 right-4">
                     <h3 className="text-lg md:text-xl 2xl:text-2xl font-light">{work.title}</h3>

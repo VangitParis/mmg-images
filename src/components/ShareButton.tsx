@@ -16,7 +16,7 @@ const buildUrl = (work: Work) => {
     if (isJxl) return work.src;
     const u = encodeURIComponent(work.src);
     const t = encodeURIComponent(work?.title || "");
-    return `/api/preview?url=${u}&title=${t}`;
+    return `/api/preview?url=${u}&title=${t}&v=logo-nt-1`;
   }
   return typeof window !== "undefined" ? window.location.href : "";
 };
