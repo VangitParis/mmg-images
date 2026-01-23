@@ -3,6 +3,8 @@ import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import Image from "next/image";
+import useIsSafari from "@/hooks/useIsSafari";
+import { textWatermarkUrl } from "@/lib/watermark";
 
 export default function ArtworkModal({
   work,
@@ -22,6 +24,8 @@ export default function ArtworkModal({
 
   if (!work) return null;
   const isJxl = /\.jxl($|\?)/i.test(work.src);
+  const isSafari = useIsSafari();
+  const showOverlay = isJxl || isSafari;
 
   return (
     <AnimatePresence>
@@ -64,12 +68,19 @@ export default function ArtworkModal({
                 draggable={false}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
-              {isJxl && (
-                <div
-                  aria-hidden
-                  className="absolute inset-0 opacity-35 bg-center bg-no-repeat bg-[length:160px] mix-blend-soft-light pointer-events-none"
-                  style={{ backgroundImage: "url('/images/Logo_mmgimages-NT.png')" }}
-                />
+              {showOverlay && (
+                <>
+                  <div
+                    aria-hidden
+                    className="absolute inset-0 opacity-15 bg-repeat bg-[length:520px] mix-blend-soft-light pointer-events-none"
+                    style={{ backgroundImage: `url("${textWatermarkUrl}")` }}
+                  />
+                  <div
+                    aria-hidden
+                    className="absolute inset-0 opacity-35 bg-center bg-no-repeat bg-[length:160px] mix-blend-soft-light pointer-events-none"
+                    style={{ backgroundImage: "url('/images/Logo_mmgimages-NT.png')" }}
+                  />
+                </>
               )}
             </div>
 
