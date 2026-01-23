@@ -1,10 +1,12 @@
-import fs from "fs";
-import path from "path";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { formatContent } from "@/utils/formatContent";
+import { kv } from "@/lib/kv";
+import fs from "fs";
+import path from "path";
 
 const filePath = path.join(process.cwd(), "src/lib/pages.json");
+const hasKv = !!process.env.KV_REST_API_URL && !!process.env.KV_REST_API_TOKEN;
 
 type PageRecord = {
   slug: string;
@@ -14,13 +16,18 @@ type PageRecord = {
   content: string;
 };
 
-function readPages(): PageRecord[] {
+async function readPages(): Promise<PageRecord[]> {
+  if (hasKv) {
+    const items = await kv.lrange("pages", 0, -1);
+    return items.map((item) => (typeof item === "string" ? JSON.parse(item) : item));
+  }
   const raw = fs.readFileSync(filePath, "utf-8");
   return JSON.parse(raw);
 }
 
-function findPage(slug: string): PageRecord | undefined {
-  return readPages().find((p) => p.slug === slug);
+async function findPage(slug: string): Promise<PageRecord | undefined> {
+  const pages = await readPages();
+  return pages.find((p) => p.slug === slug);
 }
 
 /* ✅ CONTRACT NEXT 15 : params = Promise */
@@ -28,7 +35,7 @@ export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> }
 ): Promise<Metadata> {
   const { slug } = await params;
-  const page = findPage(slug);
+  const page = await findPage(slug);
 
   if (!page) {
     return {
@@ -55,7 +62,7 @@ export default async function Page(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
-  const page = findPage(slug);
+  const page = await findPage(slug);
 
   if (!page) return notFound();
 

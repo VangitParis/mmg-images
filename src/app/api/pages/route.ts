@@ -1,14 +1,22 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { kv } from "@/lib/kv";
 
 const filePath = path.join(process.cwd(), "src/lib/pages.json");
+const hasKv = !!process.env.KV_REST_API_URL && !!process.env.KV_REST_API_TOKEN;
 
 /* ─────────────────────────────
    Helpers
    ───────────────────────────── */
-function readPages() {
+async function readPages() {
   try {
+    if (hasKv) {
+      const items = await kv.lrange("pages", 0, -1);
+      return items.map((item) =>
+        typeof item === "string" ? JSON.parse(item) : item
+      );
+    }
     if (!fs.existsSync(filePath)) fs.writeFileSync(filePath, "[]", "utf-8");
     const raw = fs.readFileSync(filePath, "utf-8");
     return raw ? JSON.parse(raw) : [];
@@ -18,7 +26,17 @@ function readPages() {
   }
 }
 
-function savePages(pages: any[]) {
+async function savePages(pages: any[]) {
+  if (hasKv) {
+    await kv.del("pages");
+    if (pages.length) {
+      await kv.rpush(
+        "pages",
+        ...pages.map((p) => (typeof p === "string" ? p : JSON.stringify(p)))
+      );
+    }
+    return;
+  }
   fs.writeFileSync(filePath, JSON.stringify(pages, null, 2), "utf-8");
 }
 
@@ -38,7 +56,7 @@ function formatContent(raw: string) {
    GET → liste toutes les pages
    ───────────────────────────── */
 export async function GET() {
-  const data = readPages();
+  const data = await readPages();
   return NextResponse.json(data);
 }
 
@@ -56,7 +74,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const pages = readPages();
+    const pages = await readPages();
 
     // 1) Nettoyage du slug AVANT la vérification
     const safeSlug = slug
@@ -82,7 +100,7 @@ export async function POST(req: Request) {
     };
 
     pages.push(newPage);
-    savePages(pages);
+    await savePages(pages);
 
     return NextResponse.json({ success: true, page: newPage });
   } catch (err: any) {
@@ -109,7 +127,7 @@ export async function PUT(req: Request) {
       );
     }
 
-    const pages = readPages();
+    const pages = await readPages();
     const index = pages.findIndex((p: any) => p.slug === slug);
 
     if (index === -1) {
@@ -130,7 +148,7 @@ export async function PUT(req: Request) {
           : pages[index].content,
     };
 
-    savePages(pages);
+    await savePages(pages);
     return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error("Erreur PUT /api/pages:", err);
@@ -140,5 +158,4 @@ export async function PUT(req: Request) {
     );
   }
 }
-
 
