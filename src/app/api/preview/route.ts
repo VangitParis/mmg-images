@@ -13,13 +13,9 @@ async function getFontDataUrl() {
   try {
     const fontPath = path.join(
       process.cwd(),
-      "node_modules",
-      "next",
-      "dist",
-      "compiled",
-      "@vercel",
-      "og",
-      "noto-sans-v27-latin-regular.ttf"
+      "public",
+      "fonts",
+      "NotoSans-Regular.ttf"
     );
     const fontBuf = await readFile(fontPath);
     fontDataUrl = `data:font/ttf;base64,${fontBuf.toString("base64")}`;
