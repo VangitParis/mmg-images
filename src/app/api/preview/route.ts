@@ -81,11 +81,11 @@ export async function GET(req: Request) {
           </defs>
           <rect width="100%" height="100%" fill="url(#g)"/>
           <text x="50%" y="45%" text-anchor="middle" fill="#ffffff" fill-opacity="0.8"
-                font-family="Arial" font-size="36" font-weight="700" letter-spacing="4">
+                font-family="DejaVu Sans, Arial, sans-serif" font-size="34" font-weight="700" letter-spacing="2">
             ${escapeXml(msg)}
           </text>
           <text x="50%" y="55%" text-anchor="middle" fill="#ffffff" fill-opacity="0.6"
-                font-family="Arial" font-size="22" letter-spacing="3">
+                font-family="DejaVu Sans, Arial, sans-serif" font-size="20" letter-spacing="2">
             FORMAT JXL NON SUPPORTÉ
           </text>
         </svg>
