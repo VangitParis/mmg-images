@@ -25,7 +25,7 @@ function logoOverlaySvg(logoDataUrl: string, w = 1200, h = 800) {
       <pattern id="wmtext" patternUnits="userSpaceOnUse" width="520" height="320" patternTransform="rotate(-18)">
         <text x="0" y="180"
               font-size="30"
-              font-family="Arial"
+              font-family="DejaVu Sans, Arial, sans-serif"
               font-weight="700"
               fill="white"
               fill-opacity="0.08"
