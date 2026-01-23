@@ -7,7 +7,7 @@ export const textWatermarkUrl =
           font-family="Arial, sans-serif"
           font-weight="700"
           fill="white"
-          fill-opacity="0.08"
+      fill-opacity="0.16"
           letter-spacing="4">
       MMGIMAGES.COM
     </text>

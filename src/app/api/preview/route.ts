@@ -6,26 +6,6 @@ import { WORKS } from "@/lib/data"; // utilisé en fallback si besoin
 
 export const runtime = "nodejs";
 
-let fontDataUrl: string | null = null;
-
-async function getFontDataUrl() {
-  if (fontDataUrl) return fontDataUrl;
-  try {
-    const fontPath = path.join(
-      process.cwd(),
-      "public",
-      "fonts",
-      "NotoSans-Regular.ttf"
-    );
-    const fontBuf = await readFile(fontPath);
-    fontDataUrl = `data:font/ttf;base64,${fontBuf.toString("base64")}`;
-  } catch (err) {
-    console.error("PREVIEW font read failed", err);
-    fontDataUrl = "";
-  }
-  return fontDataUrl;
-}
-
 function escapeXml(input: string) {
   return input
     .replaceAll("&", "&amp;")
@@ -35,32 +15,12 @@ function escapeXml(input: string) {
     .replaceAll("'", "&apos;");
 }
 
-function logoOverlaySvg(logoDataUrl: string, fontUrl: string, w = 1200, h = 800) {
-  const size = Math.round(Math.min(w, h) * 0.18);
+function logoOverlaySvg(logoDataUrl: string, w = 1200, h = 800) {
+  const size = Math.round(Math.min(w, h) * 0.28);
   const x = Math.round((w - size) / 2);
   const y = Math.round((h - size) / 2);
   return Buffer.from(`
   <svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
-    <style>
-      @font-face {
-        font-family: 'NotoSans';
-        src: url('${fontUrl}') format('truetype');
-      }
-    </style>
-    <defs>
-      <pattern id="wmtext" patternUnits="userSpaceOnUse" width="520" height="320" patternTransform="rotate(-18)">
-        <text x="0" y="180"
-              font-size="30"
-              font-family="NotoSans, sans-serif"
-              font-weight="700"
-              fill="white"
-              fill-opacity="0.08"
-              letter-spacing="4">
-          MMGIMAGES.COM
-        </text>
-      </pattern>
-    </defs>
-    <rect width="100%" height="100%" fill="url(#wmtext)"/>
     <image href="${logoDataUrl}" x="${x}" y="${y}" width="${size}" height="${size}" opacity="0.32" />
   </svg>`);
 }
@@ -95,17 +55,23 @@ export async function GET(req: Request) {
 
     const lowerUrl = sourceUrl.toLowerCase();
     if (lowerUrl.endsWith(".jxl")) {
-      // Fournit un placeholder lisible au lieu d'une 415 répétée
-      const msg = `PREVIEW NON DISPONIBLE — ${title}`.toUpperCase();
-      const fontUrl = (await getFontDataUrl()) || "";
+      // Placeholder simple sans texte (évite Fontconfig)
+      let logoDataUrl = "";
+      try {
+        const logoPath = path.join(
+          process.cwd(),
+          "public",
+          "images",
+          "Logo_mmgimages-NT.png"
+        );
+        const logoBuf = await readFile(logoPath);
+        logoDataUrl = `data:image/png;base64,${logoBuf.toString("base64")}`;
+      } catch (logoErr) {
+        console.error("PREVIEW logo read failed", logoErr);
+      }
+      const logoLayer = logoDataUrl ? logoOverlaySvg(logoDataUrl, 1400, 900) : null;
       const svg = Buffer.from(`
         <svg width="1400" height="900" xmlns="http://www.w3.org/2000/svg">
-          <style>
-            @font-face {
-              font-family: 'NotoSans';
-              src: url('${fontUrl}') format('truetype');
-            }
-          </style>
           <defs>
             <linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
               <stop offset="0%" stop-color="#0b0b0b"/>
@@ -113,20 +79,16 @@ export async function GET(req: Request) {
             </linearGradient>
           </defs>
           <rect width="100%" height="100%" fill="url(#g)"/>
-          <text x="50%" y="45%" text-anchor="middle" fill="#ffffff" fill-opacity="0.8"
-                font-family="NotoSans, sans-serif" font-size="34" font-weight="700" letter-spacing="2">
-            ${escapeXml(msg)}
-          </text>
-          <text x="50%" y="55%" text-anchor="middle" fill="#ffffff" fill-opacity="0.6"
-                font-family="NotoSans, sans-serif" font-size="20" letter-spacing="2">
-            FORMAT JXL NON SUPPORTÉ
-          </text>
         </svg>
       `);
-      const placeholderBuf = await sharp(svg)
-        .jpeg({ quality: 78, mozjpeg: true })
-        .toBuffer();
-      return new Response(new Uint8Array(placeholderBuf), {
+      let base = await sharp(svg).jpeg({ quality: 78, mozjpeg: true }).toBuffer();
+      if (logoLayer) {
+        base = await sharp(base)
+          .composite([{ input: logoLayer, gravity: "center" }])
+          .jpeg({ quality: 78, mozjpeg: true })
+          .toBuffer();
+      }
+      return new Response(new Uint8Array(base), {
         headers: {
           "Content-Type": "image/jpeg",
           "Cache-Control": "public, max-age=3600",
@@ -136,7 +98,6 @@ export async function GET(req: Request) {
     }
 
     let logoDataUrl = "";
-    const fontUrl = (await getFontDataUrl()) || "";
     try {
       const logoPath = path.join(process.cwd(), "public", "images", "Logo_mmgimages-NT.png");
       const logoBuf = await readFile(logoPath);
@@ -176,8 +137,8 @@ export async function GET(req: Request) {
     }
 
     const overlaySvg =
-      logoDataUrl && fontUrl && resized?.info?.width && resized?.info?.height
-        ? logoOverlaySvg(logoDataUrl, fontUrl, resized.info.width, resized.info.height)
+      logoDataUrl && resized?.info?.width && resized?.info?.height
+        ? logoOverlaySvg(logoDataUrl, resized.info.width, resized.info.height)
         : null;
 
     let out: Buffer;

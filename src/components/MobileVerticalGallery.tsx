@@ -4,7 +4,6 @@ import type { Work } from "@/types/work";
 import Image from "next/image";
 import ShareButton from "./ShareButton";
 import { WORKS as STATIC_WORKS } from "@/lib/data";
-import useIsSafari from "@/hooks/useIsSafari";
 import { textWatermarkUrl } from "@/lib/watermark";
 
 type Props = { onOpen: (work: Work) => void };
@@ -22,7 +21,6 @@ export default function MobileVerticalGallery({ onOpen }: Props) {
   const [active, setActive] = useState<string>("all");
   const [liked, setLiked] = useState<Record<string, boolean>>({});
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
-  const isSafari = useIsSafari();
 
   useEffect(() => {
     const load = async () => {
@@ -100,7 +98,6 @@ export default function MobileVerticalGallery({ onOpen }: Props) {
       >
         {filtered.map((work) => {
           const isJxl = !!work.src && /\.jxl($|\?)/i.test(work.src);
-          const showOverlay = isJxl || isSafari;
           const imageSrc = isJxl
             ? work.src
             : `/api/preview?url=${encodeURIComponent(work.src)}&title=${encodeURIComponent(
@@ -125,20 +122,11 @@ export default function MobileVerticalGallery({ onOpen }: Props) {
             priority={work.id === filtered[0]?.id}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none" />
-          {showOverlay && (
-            <>
-              <div
-                aria-hidden
-                className="absolute inset-0 opacity-15 bg-repeat bg-[length:520px] mix-blend-soft-light pointer-events-none"
-                style={{ backgroundImage: `url("${textWatermarkUrl}")` }}
-              />
-              <div
-                aria-hidden
-                className="absolute inset-0 opacity-35 bg-center bg-no-repeat bg-[length:150px] mix-blend-soft-light pointer-events-none"
-                style={{ backgroundImage: "url('/images/Logo_mmgimages-NT.png')" }}
-              />
-            </>
-          )}
+          <div
+            aria-hidden
+            className="absolute inset-0 opacity-12 bg-repeat bg-[length:520px] mix-blend-soft-light pointer-events-none"
+            style={{ backgroundImage: `url("${textWatermarkUrl}")` }}
+          />
           <div className="mt-auto relative z-10 p-5 space-y-2">
             <h3 className="text-2xl font-light drop-shadow">{work.title}</h3>
             {work.location && (

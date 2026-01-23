@@ -11,7 +11,6 @@ type Price = {
 };
 
 import type { Work } from "@/types/work";
-import useIsSafari from "@/hooks/useIsSafari";
 import { textWatermarkUrl } from "@/lib/watermark";
 
 type ArtworkSheetProps = {
@@ -22,7 +21,6 @@ type ArtworkSheetProps = {
 
 export default function ArtworkSheet({ work, onClose, onBuy }: ArtworkSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
-  const isSafari = useIsSafari();
   const previewUrl = useMemo(() => {
     if (!work?.src) return "";
     const isJxl = /\.jxl($|\?)/i.test(work.src);
@@ -34,7 +32,6 @@ export default function ArtworkSheet({ work, onClose, onBuy }: ArtworkSheetProps
 
   if (!work) return null;
   const isJxl = /\.jxl($|\?)/i.test(work.src);
-  const showOverlay = isJxl || isSafari;
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) onClose();
@@ -84,20 +81,11 @@ export default function ArtworkSheet({ work, onClose, onBuy }: ArtworkSheetProps
                         className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-white/10 via-transparent to-transparent pointer-events-none" />
-                      {showOverlay && (
-                        <>
-                          <div
-                            aria-hidden
-                            className="absolute inset-0 opacity-15 bg-repeat bg-[length:520px] mix-blend-soft-light pointer-events-none"
-                            style={{ backgroundImage: `url("${textWatermarkUrl}")` }}
-                          />
-                          <div
-                            aria-hidden
-                            className="absolute inset-0 opacity-35 bg-center bg-no-repeat bg-[length:140px] mix-blend-soft-light pointer-events-none"
-                            style={{ backgroundImage: "url('/images/Logo_mmgimages-NT.png')" }}
-                          />
-                        </>
-                      )}
+                      <div
+                        aria-hidden
+                        className="absolute inset-0 opacity-12 bg-repeat bg-[length:520px] mix-blend-soft-light pointer-events-none"
+                        style={{ backgroundImage: `url("${textWatermarkUrl}")` }}
+                      />
                     </div>
                   </motion.div>
 
