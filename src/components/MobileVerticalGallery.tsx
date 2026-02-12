@@ -102,7 +102,7 @@ export default function MobileVerticalGallery({ onOpen }: Props) {
             ? work.src
             : `/api/preview?url=${encodeURIComponent(work.src)}&title=${encodeURIComponent(
                 work.title
-              )}&v=logo-nt-1`;
+              )}&v=text-only-2`;
           return (
         <article
           key={work.id}

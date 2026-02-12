@@ -58,7 +58,11 @@ export default function Navbar({ onCart }: NavbarProps) {
       : "bg-gradient-to-b from-neutral-950/75 to-transparent text-white border-transparent"
   }`}
 >
-  <div className="mx-auto max-w-[clamp(1200px,85vw,1800px)] px-4 lg:px-10 h-19 flex items-center justify-between backdrop-blur-md">
+  <div
+    className={`mx-auto max-w-[clamp(1200px,85vw,1800px)] px-4 lg:px-10 flex items-center justify-between backdrop-blur-md transition-all duration-300 ${
+      scrolled ? "h-14 md:h-16 2xl:h-20" : "h-32 md:h-40 2xl:h-48"
+    }`}
+  >
 
     {/* Logo */}
     <a
@@ -66,11 +70,21 @@ export default function Navbar({ onCart }: NavbarProps) {
       className="flex items-center gap-2 hover:opacity-95 transition select-none"
       aria-label="MMG Images"
     >
-      <span className="h-[76px] w-[76px] md:h-[120px] md:w-[120px] 2xl:h-[340px] 2xl:w-[340px] rounded-full  flex items-center justify-center ]">
+      <span
+        className={`rounded-full flex items-center justify-center transition-all duration-300 ${
+          scrolled
+            ? "h-[46px] w-[46px] md:h-[56px] md:w-[56px] 2xl:h-[72px] 2xl:w-[72px]"
+            : "h-[112px] w-[112px] md:h-[162px] md:w-[162px] 2xl:h-[210px] 2xl:w-[210px]"
+        }`}
+      >
         <img
           src="/images/Logo_mmgimages.png"
           alt="MMG Images"
-          className="h-[80px] w-[80px] md:h-[130px] md:w-[130px] 2xl:h-[350px] 2xl:w-[350px] object-contain drop-shadow-[0_0_10px_rgba(0,0,0,0.55)]"
+          className={`object-contain drop-shadow-[0_0_10px_rgba(0,0,0,0.55)] transition-all duration-300 ${
+            scrolled
+              ? "h-[46px] w-[46px] md:h-[56px] md:w-[56px] 2xl:h-[72px] 2xl:w-[72px]"
+              : "h-[112px] w-[112px] md:h-[162px] md:w-[162px] 2xl:h-[210px] 2xl:w-[210px]"
+          }`}
         />
       </span>
     </a>

@@ -27,7 +27,7 @@ export default function ArtworkSheet({ work, onClose, onBuy }: ArtworkSheetProps
     if (isJxl) return work.src;
     const u = encodeURIComponent(work.src);
     const t = encodeURIComponent(work?.title ?? "MMG Images");
-    return `/api/preview?url=${u}&title=${t}&v=logo-nt-1`;
+    return `/api/preview?url=${u}&title=${t}&v=text-only-2`;
   }, [work]);
 
   if (!work) return null;

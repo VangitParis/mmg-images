@@ -207,7 +207,7 @@ export default function WallGallery({ onOpen }: WallGalleryProps) {
                 ? work.src
                 : `/api/preview?url=${encodeURIComponent(work.src)}&title=${encodeURIComponent(
                     work.title
-                  )}&v=logo-nt-1`;
+                  )}&v=text-only-2`;
               return (
               <motion.div
                 key={work.id}

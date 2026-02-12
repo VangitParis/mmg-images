@@ -1,29 +1,8 @@
 import { NextResponse } from "next/server";
 import sharp from "sharp";
-import { readFile } from "fs/promises";
-import path from "path";
 import { WORKS } from "@/lib/data"; // utilisé en fallback si besoin
 
 export const runtime = "nodejs";
-
-function escapeXml(input: string) {
-  return input
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;");
-}
-
-function logoOverlaySvg(logoDataUrl: string, w = 1200, h = 800) {
-  const size = Math.round(Math.min(w, h) * 0.28);
-  const x = Math.round((w - size) / 2);
-  const y = Math.round((h - size) / 2);
-  return Buffer.from(`
-  <svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
-    <image href="${logoDataUrl}" x="${x}" y="${y}" width="${size}" height="${size}" opacity="0.32" />
-  </svg>`);
-}
 
 export async function GET(req: Request) {
   try {
@@ -55,21 +34,7 @@ export async function GET(req: Request) {
 
     const lowerUrl = sourceUrl.toLowerCase();
     if (lowerUrl.endsWith(".jxl")) {
-      // Placeholder simple sans texte (évite Fontconfig)
-      let logoDataUrl = "";
-      try {
-        const logoPath = path.join(
-          process.cwd(),
-          "public",
-          "images",
-          "Logo_mmgimages-NT.png"
-        );
-        const logoBuf = await readFile(logoPath);
-        logoDataUrl = `data:image/png;base64,${logoBuf.toString("base64")}`;
-      } catch (logoErr) {
-        console.error("PREVIEW logo read failed", logoErr);
-      }
-      const logoLayer = logoDataUrl ? logoOverlaySvg(logoDataUrl, 1400, 900) : null;
+      // Placeholder simple sans logo ni texte (évite Fontconfig)
       const svg = Buffer.from(`
         <svg width="1400" height="900" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -81,13 +46,7 @@ export async function GET(req: Request) {
           <rect width="100%" height="100%" fill="url(#g)"/>
         </svg>
       `);
-      let base = await sharp(svg).jpeg({ quality: 78, mozjpeg: true }).toBuffer();
-      if (logoLayer) {
-        base = await sharp(base)
-          .composite([{ input: logoLayer, gravity: "center" }])
-          .jpeg({ quality: 78, mozjpeg: true })
-          .toBuffer();
-      }
+      const base = await sharp(svg).jpeg({ quality: 78, mozjpeg: true }).toBuffer();
       return new Response(new Uint8Array(base), {
         headers: {
           "Content-Type": "image/jpeg",
@@ -95,15 +54,6 @@ export async function GET(req: Request) {
           "X-Robots-Tag": "noindex",
         },
       });
-    }
-
-    let logoDataUrl = "";
-    try {
-      const logoPath = path.join(process.cwd(), "public", "images", "Logo_mmgimages-NT.png");
-      const logoBuf = await readFile(logoPath);
-      logoDataUrl = `data:image/png;base64,${logoBuf.toString("base64")}`;
-    } catch (logoErr) {
-      console.error("PREVIEW logo read failed", logoErr);
     }
 
     let absoluteUrl: URL;
@@ -136,21 +86,9 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Invalid or unsupported image" }, { status: 415 });
     }
 
-    const overlaySvg =
-      logoDataUrl && resized?.info?.width && resized?.info?.height
-        ? logoOverlaySvg(logoDataUrl, resized.info.width, resized.info.height)
-        : null;
-
     let out: Buffer;
     try {
-      if (overlaySvg) {
-        out = await sharp(resized.data)
-          .composite([{ input: overlaySvg, gravity: "center" }])
-          .jpeg({ quality: 78, mozjpeg: true })
-          .toBuffer();
-      } else {
-        out = await sharp(resized.data).jpeg({ quality: 78, mozjpeg: true }).toBuffer();
-      }
+      out = await sharp(resized.data).jpeg({ quality: 78, mozjpeg: true }).toBuffer();
     } catch (err) {
       console.error("Composite failed, returning resized jpeg only:", err);
       out = await sharp(resized.data).jpeg({ quality: 78, mozjpeg: true }).toBuffer();
