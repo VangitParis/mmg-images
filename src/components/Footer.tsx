@@ -30,11 +30,11 @@ export default function Footer() {
         {/* Bloc gauche — identité */}
         <div>
           <div className="flex items-center gap-3 mb-3">
-            <span className="h-[80px] w-[80px] md:h-[80px] md:w-[70px] lg:h-[88px] lg:w-[88px] 2xl:h-[120px] 2xl:w-[120px] rounded-full  backdrop-blur-sm flex items-center justify-center shadow-[0_10px_26px_rgba(0,0,0,0.45)]">
+            <span className="h-[92px] w-[92px] md:h-[122px] md:w-[122px] lg:h-[142px] lg:w-[142px] 2xl:h-[176px] 2xl:w-[176px] rounded-full backdrop-blur-sm flex items-center justify-center shadow-[0_10px_26px_rgba(0,0,0,0.45)]">
               <img
                 src="/images/Logo_mmgimages.png"
                 alt="MMG Images"
-                className="h-[80px] w-[80px] md:h-[78px] md:w-[78px] lg:h-[98px] lg:w-[98px] 2xl:h-[130px] 2xl:w-[130px] object-contain drop-shadow-[0_0_6px_rgba(0,0,0,0.5)]"
+                className="h-[92px] w-[92px] md:h-[122px] md:w-[122px] lg:h-[142px] lg:w-[142px] 2xl:h-[176px] 2xl:w-[176px] object-contain drop-shadow-[0_0_6px_rgba(0,0,0,0.5)]"
               />
             </span>
             <h3 className="text-lg md:text-xl 2xl:text-2xl text-neutral-100 leading-tight">

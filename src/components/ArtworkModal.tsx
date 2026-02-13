@@ -67,7 +67,7 @@ export default function ArtworkModal({
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
               <div
                 aria-hidden
-                className="absolute inset-0 opacity-12 bg-repeat bg-[length:520px] mix-blend-soft-light pointer-events-none"
+                className="absolute inset-0 opacity-16 bg-repeat bg-[length:340px] mix-blend-soft-light pointer-events-none"
                 style={{ backgroundImage: `url("${textWatermarkUrl}")` }}
               />
             </div>
